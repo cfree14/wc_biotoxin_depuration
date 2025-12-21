@@ -1,0 +1,27 @@
+Data disclaimers
+
+Domoic acid data
+
+-“ASP ug/g” = amnesic shellfish poisoning micrograms per gram = domoic acid parts per million (ppm).
+
+-The “Mod” data field before the biotoxin value field is a modifier field that should be added in front of the biotoxin value (IE. <2.5 ppm domoic acid).
+
+-Mussel and oyster samples are homogenates of at least 12 or more individuals. Other species of shellfish may not contain this minimum number.  
+
+-Sample station coordinates are approximate. These have not been QCd or ground-truthed and may be incorrect. 
+
+- Only a portion of the commercial growing areas are tested for domoic acid routinely. For other areas it is usually event driven based on presence of Pseudo-nitzschia.
+
+-The shellfish growing area samples are generally collected weekly. There may be some breaks in data due to an area being temporarily closed for a variety of reasons.
+
+-The non-commercial sample sites are not sampled on a routine basis. Volunteer sampling is sporadic, based on the schedules of volunteers and plankton events. This data is not good for time series analysis. 
+
+-Data errors: There were some instances where a sample was entered twice into the database.  We tried to remove these errors, but some may remain.
+
+-Duplicate samples: In some instances, a sample was tested twice. There may be some instances of duplicate data in the database. We tried to remove these duplicates, but some may remain.
+
+-Sentinel mussels are mussels that have been placed in bags at a specific location (usually on a pier or buoy) for the purpose of collecting samples.
+
+-Tested via HPLC. Method from: J.S. Dhoot, A.R. Del Rosario, B.R. Appel and B.R. Tamplin, “ An Improved HPLC Procedure for Domoic Acid Analysis in Seafood,” Intern. J. Environ. Anal. Chem., Vol.53, pp.261-268 (1993)
+
+-Citations: Please cite the California Department of Public Health, Environmental Management Branch.
