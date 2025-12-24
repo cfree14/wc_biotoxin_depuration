@@ -14,14 +14,22 @@ indir <- "data/california/raw"
 outdir <- "data/california/processed"
 
 # Read data
-data_orig <- readxl::read_excel(file.path(indir, "CDPH_domoic-acid-bivalve_data_121824.xlsx"), col_types = "text")
+data_orig1 <- readxl::read_excel(file.path(indir, "CDPH_domoic-acid-bivalve_data_121824.xlsx"), col_types = "text") # 1991-2024
+data_orig2 <- readxl::read_excel(file.path(indir, "DA_12-2024-2025.xlsx"), col_types = "text") # 2025
+
+# Sample key
+type_key <- readxl::read_excel(file.path(indir, "sample_type_key_bivalve_domoic.xlsx"))
 
 
 # Clean data
 ################################################################################
 
+# Column names
+colnames(data_orig1)
+colnames(data_orig2) # No egency code, shellfish code, or notes
+
 # Clean data
-data <- data_orig %>% 
+data <- bind_rows(data_orig1, data_orig2) %>% 
   # Rename
   janitor::clean_names("snake") %>% 
   rename(sample_id=srl_number,
@@ -31,9 +39,10 @@ data <- data_orig %>%
          long_dd=longitude, 
          sample_type_code=shellfish_code, 
          nindiv=number_of_individuals,
-         sample_type_orig=sample_type) %>% 
+         modifier=mod_asp,
+         toxicity_ug_g=asp_ug_g) %>% 
   # Convert numbers
-  mutate_at(vars(long_dd, lat_dd, asp_ug_g, nindiv), as.numeric) %>% 
+  mutate_at(vars(long_dd, lat_dd, toxicity_ug_g, nindiv), as.numeric) %>% 
   # Convert date
   mutate(date=as.numeric(date) %>% as.Date(., origin = "1899-12-30") %>% lubridate::ymd(.)) %>% 
   # mutate(date=lubridate::ymd(date)) %>% 
@@ -48,48 +57,16 @@ data <- data_orig %>%
                         "Tresus nuttalli" = "Tresus nuttallii",
                         "Tapes japonica" = "Ruditapes philippinarum",
                         "Mytilus gallo/trossulus/edulis"="Mytilus galloprovincialis/trossulus/edulis")) %>% 
-  # Format sample type (to break into common name and other)
-  mutate(sample_type_orig=recode(sample_type_orig,
-                                 "Clam, razor"="Razor clam",
-                                 "Gaper Clam meat" = "Gaper Clam, meat",             
-                                 "Gaper Clam siphon" = "Gaper Clam, siphon",              
-                                 "Gaper Clam viscera" = "Gaper Clam, viscera",
-                                 "Pismo Clam meat" = "Pismo Clam, meat",             
-                                 "Pismo Clam viscera" = "Pismo Clam, viscera",  
-                                 "Razor Clam meat" = "Razor Clam, meat",              
-                                 "Razor Clam viscera" = "Razor Clam, viscera",  
-                                 "Rock Scallop adductor" = "Rock Scallop, adductor",   
-                                 "Rock Scallop mantle, gills" = "Rock Scallop, mantle/gills", 
-                                 "Rock Scallop viscera" = "Rock Scallop, viscera",
-                                 "Sentinel Pacific Oyster" = "Pacific Oyster, Sentinel",
-                                 "Clam, unidentified" = "Unidentified clam",
-                                 "Cultured Rock Scallop,adductor" = "Rock Scallop, cultured/adductor",
-                                 "Cultured Rock Scallop, viscera"= "Rock Scallop, cultured/viscera")) %>% 
-  # Break into common name and other
-  separate(sample_type_orig, into=c("comm_name", "tissue"), sep=", ", remove = F) %>% 
-  # Format common names
-  mutate(comm_name=stringr::str_to_sentence(comm_name),
-         comm_name=case_when(species=="Mytilus galloprovincialis/trossulus/edulis" ~ "Mixed bay/blue/sea mussels",
+  # Add sample type info
+  left_join(type_key, by="sample_type") %>% 
+  # Fix common name
+  mutate(comm_name=case_when(species=="Mytilus galloprovincialis/trossulus/edulis" ~ "Sea/blue/bay mussels",
                              T ~ comm_name)) %>% 
-  # Format tissue/source
-  mutate(tissue=stringr::str_to_lower(tissue),
-         source=case_when(grepl("cultured", tissue) ~ "cultured",
-                          grepl("sentinel", tissue) ~ "sentinel",
-                          grepl("wild", tissue) ~ "wild",
-                          T ~ NA),
-         tissue=recode(tissue,
-                       "cultured"="",
-                       "sentinel"="",
-                       "wild"="",
-                       "cultured/adductor"="adductor",
-                       "cultured/viscera"="viscera"),
-         tissue=ifelse(tissue=="", NA, tissue)) %>% 
-  # Fill missing tissue (assume NAs = whole)
-  mutate(tissue=ifelse(is.na(tissue), "whole", tissue)) %>% 
-  # Fill missing source (assume NAs = wild)
-  mutate(source=ifelse(is.na(source), "wild", source)) %>% 
+  # Fill missing tissue/source
+  mutate(tissue=ifelse(is.na(tissue), "not specified", tissue)) %>% 
+  mutate(source=ifelse(is.na(source), "not specified", source)) %>% 
   # Format scientific name
-  mutate(species=case_when(comm_name=="Mixed sea/bay mussels" ~ "Mytilus galloprovincialis/edulis", 
+  mutate(species=case_when(comm_name=="Sea/bay mussels" ~ "Mytilus galloprovincialis/edulis", 
                            comm_name=="Unidentified clam" ~ "Bivalvia spp.",
                            T ~ species)) %>% 
   # Add date info
@@ -98,9 +75,9 @@ data <- data_orig %>%
   # Arrange
   select(sample_id, year, month, date, 
          agency_code, county, site, lat_dd, long_dd, 
-          species, comm_name, tissue, source, 
-          sample_type_code, sample_type_orig, 
-          nindiv, mod_asp, asp_ug_g, notes, everything())
+         species, comm_name, tissue, source, 
+         sample_type_code, sample_type, 
+         nindiv, modifier, toxicity_ug_g, notes, everything())
   
 # Inspect
 str(data)
@@ -114,10 +91,14 @@ table(data$county)
 
 # Agency
 table(data$agency_code)
+table(data$source)
+
+# Source
+table(data$tissue)
 
 # Sample type
 type_key <- data %>% 
-  count(sample_type_code, sample_type_orig, comm_name, tissue, source)
+  count(sample_type_code, sample_type, comm_name, tissue, source)
 freeR::which_duplicated(type_key$sample_type_code)
 
 # Lat/long
@@ -145,7 +126,7 @@ site_key <- data %>%
 # Plots
 ################################################################################
 
-ggplot(data, aes(x=date, y=lat_dd, color=source, size=asp_ug_g)) +
+ggplot(data, aes(x=date, y=lat_dd, color=source, size=toxicity_ug_g)) +
   facet_wrap(~comm_name, ncol=5) +
   geom_point() +
   # Labels
@@ -158,7 +139,8 @@ ggplot(data, aes(x=date, y=lat_dd, color=source, size=asp_ug_g)) +
 ################################################################################
 
 # Export
-saveRDS(data, file=file.path(outdir, "CDPH_1991_2024_bivalve_domoic_data.Rds"))
+range(data$year)
+saveRDS(data, file=file.path(outdir, "CDPH_1991_2025_bivalve_domoic_data.Rds"))
 
 
 

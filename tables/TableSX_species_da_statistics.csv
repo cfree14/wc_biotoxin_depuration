@@ -1,0 +1,32 @@
+"comm_name","species","states","sources","n","nyr","nsites","toxicity_ug_g_max"
+"Sea mussel","Mytilus californianus","CA","W, S",5420,34,279,237
+"Pacific oyster","Crassostrea gigas","CA","S, C",2913,33,70,387
+"Bay mussel","Mytilus galloprovincialis","CA","C",1629,33,28,610
+"Razor clam","Siliqua patula","CA","not specified",1087,23,16,450
+"Sea/blue/bay mussels","Mytilus galloprovincialis/trossulus/edulis","CA","W, S",1024,33,94,113
+"Sardine","Sardinops sagax","CA","W",197,17,40,220
+"Northern anchovy","Engraulis mordax","CA","W",170,11,34,1298
+"Rock scallop","Crassadoma gigantea","CA","W, not specified, C",103,19,27,5.8
+"Pismo clam","Tivela stultorum","CA","not specified",91,22,14,9.8
+"Sea/bay mussels","Mytilus galloprovincialis/edulis","CA","not specified",46,9,12,380
+"Washington clam","Saxidomus nuttalli","CA","not specified",30,13,10,2.5
+"Kumamoto oyster","Magallana gigas","CA","C",27,4,12,2.5
+"Littleneck clam","Leukoma staminea","CA","not specified",25,10,8,15
+"Gaper clam","Tresus nuttallii","CA","not specified",17,11,11,6.1
+"Salmon","Oncorhynchus tshawytscha","CA","W",9,1,1,200
+"Barred surfperch","Amphistichus argenteus","CA","W",8,1,2,26
+"Mackeral","Scomber japonicus","CA","W",8,3,5,42
+"Red abalone","Haliotis rufescens","CA","W",8,1,3,2.5
+"Black surfperch","Embiotoca jacksoni","CA","W",6,1,1,2.5
+"Pile surfperch","Rhacochilus vacca","CA","W",4,1,1,5.1
+"Pacific lamprey","Entosphenus tridentatus","CA","W",3,1,1,2.5
+"Unidentified clam","Bivalvia spp.","CA","not specified",3,3,3,82
+"Basket cockle","Clinocardium nuttallii","CA","not specified",2,2,2,2.5
+"Gooseneck barnacle","Pollicipes polymerus","CA","W",2,2,2,19
+"Grunion","Leuresthes tenuis","CA","W",2,1,1,1
+"Manila clam","Ruditapes philippinarum","CA","not specified",2,2,2,2.5
+"Shiner surfperch","Cymatogaster aggregata","CA","W",2,1,1,2.5
+"Thornback ray","Platyrhinoidis triseriata","CA","W",2,1,1,2.5
+"California yellowtail","Seriola lalandi","CA","W",1,1,1,2.5
+"Shrimp","Pandalus jordani","CA","W",1,1,1,2.5
+"Squid","Doryteuthis opalescens","CA","W",1,1,1,2.5
