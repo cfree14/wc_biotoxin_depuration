@@ -26,7 +26,7 @@ type_key <- readxl::read_excel(file.path(indir, "sample_type_key_bivalve_domoic.
 
 # Column names
 colnames(data_orig1)
-colnames(data_orig2) # No egency code, shellfish code, or notes
+colnames(data_orig2) # No agency code, shellfish code, or notes
 
 # Clean data
 data <- bind_rows(data_orig1, data_orig2) %>% 
@@ -45,7 +45,6 @@ data <- bind_rows(data_orig1, data_orig2) %>%
   mutate_at(vars(long_dd, lat_dd, toxicity_ug_g, nindiv), as.numeric) %>% 
   # Convert date
   mutate(date=as.numeric(date) %>% as.Date(., origin = "1899-12-30") %>% lubridate::ymd(.)) %>% 
-  # mutate(date=lubridate::ymd(date)) %>% 
   # Format longitude
   mutate(long_dd=abs(long_dd)*-1) %>% 
   # Format species
@@ -65,6 +64,9 @@ data <- bind_rows(data_orig1, data_orig2) %>%
   # Fill missing tissue/source
   mutate(tissue=ifelse(is.na(tissue), "not specified", tissue)) %>% 
   mutate(source=ifelse(is.na(source), "not specified", source)) %>% 
+  # Add tissue/source with assumptions
+  mutate(tissue_use=recode(tissue, "not specified"="whole"),
+         source_use=recode(source, "not specified"="wild")) %>% 
   # Format scientific name
   mutate(species=case_when(comm_name=="Sea/bay mussels" ~ "Mytilus galloprovincialis/edulis", 
                            comm_name=="Unidentified clam" ~ "Bivalvia spp.",
@@ -75,7 +77,7 @@ data <- bind_rows(data_orig1, data_orig2) %>%
   # Arrange
   select(sample_id, year, month, date, 
          agency_code, county, site, lat_dd, long_dd, 
-         species, comm_name, tissue, source, 
+         species, comm_name, tissue, source, tissue_use, source_use,
          sample_type_code, sample_type, 
          nindiv, modifier, toxicity_ug_g, notes, everything())
   
@@ -126,7 +128,7 @@ site_key <- data %>%
 # Plots
 ################################################################################
 
-ggplot(data, aes(x=date, y=lat_dd, color=source, size=toxicity_ug_g)) +
+ggplot(data, aes(x=date, y=lat_dd, color=source_use, size=toxicity_ug_g)) +
   facet_wrap(~comm_name, ncol=5) +
   geom_point() +
   # Labels
