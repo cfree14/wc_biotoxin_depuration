@@ -43,9 +43,9 @@ data <- data_orig %>%
   mutate(species=case_when(is.na(species) & grepl("sardine", tolower(sample_type)) ~ "Sardinops sagax",
                            is.na(species) & grepl("mackeral", tolower(sample_type)) ~ "Scomber japonicus",
                            is.na(species) & grepl("mackeral", tolower(sample_type)) ~ "Scomber japonicus",
-                           is.na(species) & grepl("salmon", tolower(sample_type)) ~ "Oncorhynchus tshawytscha",
-                           is.na(species) & grepl("shrimp", tolower(sample_type)) ~ "Pandalus jordani",
-                           is.na(species) & grepl("squid", tolower(sample_type)) ~ "Doryteuthis opalescens",
+                           is.na(species) & grepl("salmon", tolower(sample_type)) ~ "Salmon spp.", # Oncorhynchus tshawytscha
+                           is.na(species) & grepl("shrimp", tolower(sample_type)) ~ "Shrimp spp.", # Pandalus jordani
+                           is.na(species) & grepl("squid", tolower(sample_type)) ~ "Squid spp.", # Doryteuthis opalescens
                            T ~ species)) %>% 
   # Add year and month
   mutate(year=lubridate::year(date),
@@ -54,6 +54,7 @@ data <- data_orig %>%
   left_join(type_key, by="sample_type") %>% 
   # Fill missing tissues
   mutate(tissue=ifelse(is.na(tissue), "not specified", tissue)) %>% 
+  mutate(tissue_use=ifelse(tissue=="not specifided", "muscle", tissue)) %>% 
   # Arrange
   select(sample_id, year, month, date, 
          county, site, lat_dd, long_dd, 
@@ -72,6 +73,11 @@ freeR::complete(data)
 table(data$county)
 table(data$nindiv)
 table(data$modifier)
+table(data$tissue)
+
+# Tissue stats
+tissue_stats <- data %>%
+  count(comm_name, tissue)
 
 # Species key
 spp_key <- data %>% 

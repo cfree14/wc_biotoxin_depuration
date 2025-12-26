@@ -47,12 +47,13 @@ data <- data_merged %>%
          site=sample_site,
          lat_dd=latitude,
          long_dd=longitude,
-         psp_mod=mod_psp_median) %>% 
+         modifier=mod_psp_median,
+         toxicity_ug_100g=psp_ug_100_g) %>% 
   # Format species
   mutate(species=recode(species,
                         "Clinocardium nuttalli" = "Clinocardium nuttallii",     
                         "Magallana sikamea" = "Magallana gigas", 
-                        "Mytilus gallo/trossulus/edulis" = "",
+                        "Mytilus gallo/trossulus/edulis" = "Mytilus galloprovincialis/trossulus/edulis",
                         "Prototheca staminea" = "Leukoma staminea", 
                         "Sanguinolaria nuttallii" = "Nuttallia nuttallii",
                         "Tapes japonica" = "Ruditapes philippinarum",    
@@ -70,13 +71,25 @@ data <- data_merged %>%
   mutate(source=ifelse(is.na(source), "not specified", source)) %>%
   # Fill empty tissue
   mutate(tissue=ifelse(is.na(tissue), "not specified", tissue)) %>%
-  # Fill missing species
-  # mutate(species=case_when("")) %>% 
+  # Fill some species names based on common names
+  mutate(species=case_when(comm_name == "Unidentified clam" ~ "Clam spp.",
+                           comm_name == "Unidentified mussel" ~ "Mussel spp.",
+                           comm_name == "Unidentified oyster" ~ "Oyster spp.",
+                           comm_name == "Sea/bay mussels" ~ "Mytilus galloprovincialis/edulis",
+                           T ~ species)) %>% 
+  # Fix some common names based on species names
+  # mutate(comm_name=case_when(species == "Mytilus galloprovincialis" ~ "Sea mussel",
+  #                            T ~ species))
+  # Format modifier
+  # Do D and J mean N b/c all they toxicities are blank?
+  # Does > actually mean < because all smallish toxicities (42, 43, 80)?
+  # Is A a typo because all have toxicities?
+  mutate(modifier=toupper(modifier)) %>% 
   # Arrange
   select(sample_id, year, month, date, 
          county, site, lat_dd, long_dd, 
          comm_name, species, sample_type, tissue, source,
-         psp_mod, psp_ug_100_g,
+         modifier, toxicity_ug_100g,
          everything()) %>% 
   # Remove blanks
   filter(!is.na(sample_id))
@@ -92,7 +105,7 @@ freeR::complete(data)
 table(data$sample_type)
 
 # Modifiers - something crazy here
-table(data$psp_mod)
+table(data$modifier)
 
 # County
 table(data$county)
@@ -115,8 +128,8 @@ sample_type_key <- data %>%
 
 ggplot(data, aes(y=lat_dd,
                  x=date,
-                 color=species, 
-                 size=psp_ug_100_g)) +
+                 color=comm_name, 
+                 size=toxicity_ug_100g)) +
   geom_point()
 
 
