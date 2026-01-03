@@ -14,13 +14,16 @@ indir <- "data/washington/raw"
 outdir <- "data/washington/processed"
 
 # Read data
-data_orig <- readxl::read_excel(file.path(indir, "Biotoxin_Data_1957_to_September_2025.xlsx"), na="NULL")
+data_orig <- readxl::read_excel(file.path(indir, "Biotoxin_Data_1957_to_September_2025.xlsx"), na="NULL", col_types = "text")
 
 # Read grid key
 grid_orig <- readxl::read_excel(file.path(indir, "Grid_Codes_2025.xlsx"), na="Null")
 
 # Read species key
 spp_orig <- readxl::read_excel(file.path(indir, "WDOH_species_key.xlsx"))
+
+# Check species names
+# freeR::check_names(spp_orig$species)
 
 # THERE IS A LOT TO DO HERE
 
@@ -83,16 +86,30 @@ data <- data_orig %>%
          da_date=domoic_date,
          psp_date=lab_psp_date,
          date_lab_received=lab_receive_date_time) %>% 
+  # Format dates
+  mutate(date_collected=as.numeric(date_collected) %>% as.Date(., origin = "1899-12-30") %>% lubridate::ymd(.),
+         date_submitted=as.numeric(date_submitted) %>% as.Date(., origin = "1899-12-30") %>% lubridate::ymd(.),
+         date_lab_received=as.numeric(date_lab_received) %>% as.Date(., origin = "1899-12-30") %>% lubridate::ymd(.),
+         da_date=as.numeric(da_date) %>% as.Date(., origin = "1899-12-30") %>% lubridate::ymd(.),
+         psp_date=as.numeric(psp_date) %>% as.Date(., origin = "1899-12-30") %>% lubridate::ymd(.),
+         dsp_date=as.numeric(dsp_date) %>% as.Date(., origin = "1899-12-30") %>% lubridate::ymd(.)) %>% 
+  # Add year/month
+  mutate(year_collected=lubridate::year(date_collected),
+         month_collected=lubridate::month(date_collected)) %>% 
   # Format species
   mutate(comm_name=stringr::str_to_sentence(comm_name)) %>% 
   # Add species
-  left_join(spp_orig %>% select(comm_name, species)) %>% 
+  left_join(spp_orig %>% select(comm_name, species), by="comm_name") %>% 
   # Add lat/long
-  left_join(grid %>% select(site_id, lat_dd, long_dd)) %>% 
+  left_join(grid %>% select(site_id, lat_dd, long_dd), by="site_id") %>% 
+  # Recode DA: <1, NoTest, NTD, UNSAT
+  # Recode PSP: <38, UNSAT, NTD, NoTest
+  # Recode DSP: <1, UNSAT, NTD, No Test, 
   # Arrange
   select(county, waterbody, site, subsite, site_id, lat_dd, long_dd,
          organization, cert_number, 
-         date_collected, date_submitted, date_lab_received,
+         year_collected, month_collected, date_collected, 
+         date_submitted, date_lab_received,
          comm_name, species, sample_type, shell_shucked, fresh_frozen, monitoring_type,
          da_id, da_date, da_tissue, da_result,
          psp_id, psp_date, psp_tissue, psp_result,
@@ -111,13 +128,19 @@ sort(unique(data$site))
 sort(unique(data$subsite))
 sort(unique(data$site_id))
 
+# Results
+sort(unique(data$da_result))
+sort(unique(data$psp_result)) %>% rev()
+sort(unique(data$dsp_result)) %>% rev()
+
+
 # Site key - clean this up
 # Adding waterbody duplicates 1
 # Adding site adds a few more
 site_key <- data %>% 
   count(site_id, county, waterbody, site)
 
-# Organizatin key - learn more about this, not 1:1
+# Organization key - learn more about this, not 1:1
 org_key <- data %>% 
   count(organization, cert_number)
 freeR::which_duplicated(org_key$organization)

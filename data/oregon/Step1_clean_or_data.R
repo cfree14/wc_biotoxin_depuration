@@ -28,6 +28,8 @@ site_key_crab <- readxl::read_excel(file.path(indir, "site_key_crab.xlsx"))
 # Other Qs for Alex: tissue for bivalves?
 # Are the bivalves all wild? Are some famred?
 
+# There are some 2027 dates
+
 # Clean crab
 ################################################################################
 
@@ -340,7 +342,13 @@ data_da <- bind_rows(clams1_da, clams2_da,
                      mussels1_da, mussels2_da,
                      crab_da) %>% 
   # Format site
-  mutate(site=stringr::str_to_title(site))
+  mutate(site=stringr::str_to_title(site)) %>% 
+  # Add year and month
+  mutate(year=lubridate::year(date),
+         month=lubridate::month(date),
+         sample_id=make.unique(paste(date, comm_name, sep="-"))) %>% 
+  # Arrange
+  select(sample_id, year, month, date, everything())
 
 # Inspect
 str(data_da)
@@ -408,17 +416,32 @@ data_psp <- bind_rows(clams1_psp, clams2_psp,
                      mussels1_psp, mussels2_psp,
                      crab_psp) %>% 
   # Format site
-  mutate(site=stringr::str_to_title(site))
+  mutate(site=stringr::str_to_title(site),
+         site=recode(site,
+                     "Bastendorf Bch To Cape Arago" = "Bastendorf Beach To Cape Arago",
+                     "Clatsop Bch-Cannon Beach" = "Clatsop Beach-Cannon Beach",
+                     "Clatsop Beach/Del Ray" = "Clatsop Beach/Del Rey",
+                     "Netarts Bay\r" = "Netarts Bay",
+                     "Whiskey Run/Mid Coos Co Bchs" = "Whiskey Run/Mid Coos",
+                     "Newport Agate Beach" = "Newport Beaches @ Agate Beach",
+                     "Coos N Jetty & Spit" = "Coos N Jetty" )) %>% 
+  # Add year and month
+  mutate(year=lubridate::year(date),
+         month=lubridate::month(date),
+         sample_id=make.unique(paste(date, comm_name, sep="-"))) %>% 
+  # Arrange
+  select(sample_id, year, month, date, everything())
 
 # Inspect
 str(data_psp)
 freeR::complete(data_psp)
 
+
 # Insoect more
 table(data_psp$comm_name)
 table(data_psp$tissue)
 table(data_psp$modifier)
-table(data_psp$site)
+freeR::uniq(data_psp$site)
 
 # Visualize
 ggplot(data_psp, aes(y=site, x=date, color=comm_name, size=toxicity_ppm)) +
@@ -428,4 +451,11 @@ ggplot(data_psp, aes(y=site, x=date, color=comm_name, size=toxicity_ppm)) +
 # Export data
 ################################################################################
 
+range(data_psp$year)
+range(data_da$year)
+
+
+# Export data
+saveRDS(data_psp, file=file.path(outdir, "ODA_1999_2025_psp_data.Rds"))
+saveRDS(data_da, file=file.path(outdir, "ODA_1999_2025_domoic_data.Rds"))
 

@@ -49,8 +49,8 @@ data <- bind_rows(data_orig1, data_orig2) %>%
   mutate(long_dd=abs(long_dd)*-1) %>% 
   # Format species
   mutate(species=recode(species,
+                        "Crassostrea gigas" = "Magallana gigas",
                         "Clinocardium nuttalli" = "Clinocardium nuttallii",        
-                        "Magallana sikamea" = "Magallana gigas",             
                         # "Mytilus gallo/trossulus/edulis" = "",
                         "Prototheca staminea" = "Leukoma staminea",   
                         "Tresus nuttalli" = "Tresus nuttallii",
@@ -60,6 +60,7 @@ data <- bind_rows(data_orig1, data_orig2) %>%
   left_join(type_key, by="sample_type") %>% 
   # Fix common name
   mutate(comm_name=case_when(species=="Mytilus galloprovincialis/trossulus/edulis" ~ "Sea/blue/bay mussels",
+                             species=="Tresus nuttallii" ~ "Pacific gaper clam",
                              T ~ comm_name)) %>% 
   # Fill missing tissue/source
   mutate(tissue=ifelse(is.na(tissue), "not specified", tissue)) %>% 
@@ -122,6 +123,7 @@ site_key <- data %>%
   ungroup()
 
 # Check species
+# Magallana sikamea is correct
 # freeR::check_names(spp_key$species)
 
 
