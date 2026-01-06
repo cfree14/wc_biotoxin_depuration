@@ -55,9 +55,10 @@ or <- or_da_orig %>%
 
 # Format WA data
 wa <- wa_orig %>% 
+  # Reduce
+  filter(state=="Washington") %>% 
   # Add state
-  mutate(state="Washington",
-         source="not specified") %>% 
+  mutate( source="not specified") %>% 
   # Reduce to domoic
   filter(!is.na(da_id)) %>% 
   # Simplify
@@ -72,10 +73,7 @@ wa <- wa_orig %>%
          month=month_collected,
          date=date_collected,
          tissue=da_tissue,
-         toxicity_ppm=da_result) %>% 
-  # Remove toxicity
-  select(-toxicity_ppm)
-
+         toxicity_ppm=da_result)
 
 
 # Merge
@@ -109,7 +107,7 @@ freeR::which_duplicated(spp_key$comm_name)
 freeR::which_duplicated(spp_key$species)
 
 # Plot
-ggplot(data, aes(x=date, y=lat_dd, color=comm_name)) +
+ggplot(data, aes(x=date, y=lat_dd, color=comm_name, size=toxicity_ppm)) +
   geom_point() +
   # Legend
   scale_color_discrete(guide="none") +
@@ -120,6 +118,6 @@ ggplot(data, aes(x=date, y=lat_dd, color=comm_name)) +
 ################################################################################
 
 # Export
-# save(data, file=file.path(outdir, "WC_domoic_acid_data.Rdata"))
+saveRDS(data, file=file.path(outdir, "WC_domoic_acid_data.Rds"))
 
 

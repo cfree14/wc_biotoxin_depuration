@@ -27,6 +27,9 @@ spp_orig <- readxl::read_excel(file.path(indir, "WDOH_species_key.xlsx"))
 
 # THERE IS A LOT TO DO HERE
 
+# You can tell the county from the site code
+# Can monitoring type be turned into "source/origin?"
+
 
 # Format grid key
 ################################################################################
@@ -103,10 +106,46 @@ data <- data_orig %>%
   # Add lat/long
   left_join(grid %>% select(site_id, lat_dd, long_dd), by="site_id") %>% 
   # Recode DA: <1, NoTest, NTD, UNSAT
+  mutate(da_result=recode(da_result, 
+                          "NoTest"="",
+                          "NTD"="1",
+                          "UNSAT"="",
+                          "<1"="1") %>% as.numeric(.)) %>% 
   # Recode PSP: <38, UNSAT, NTD, NoTest
-  # Recode DSP: <1, UNSAT, NTD, No Test, 
+  mutate(da_result=recode(psp_result, 
+                          "NoTest"="",
+                          "NTD"="38",
+                          "UNSAT"="",
+                          "<38"="38") %>% as.numeric(.)) %>% 
+  # Recode DSP: <1, UNSAT, NTD, No Test
+  mutate(dsp_result=recode(dsp_result, 
+                          "No Test"="",
+                          "NTD"="1",
+                          "UNSAT"="",
+                          "<1"="1") %>% as.numeric(.)) %>% 
+  # Add state
+  mutate(state="Washington",
+         state=case_when(waterbody %in% c("Oregon", "California", "Alaska", "Canada") ~ waterbody, 
+                         waterbody == "Out of Country" ~ "British Columbia",
+                         waterbody %in% c("Out of State", "Other", "Unknown Location") ~ "Unknown",
+                         T ~ state),
+         
+         state=recode(state, "Canada"="British Columbia")) %>% 
+  # Fill missing counties
+  mutate(county=case_when(organization=="Catalina Sea Ranch" ~ "Los Angeles", 
+                          T ~ county)) %>% 
+  # Mark coastal (yes/no)
+  mutate(outer_yn=ifelse(county %in% "Pacific", "Grays Harbor", "Jefferson")) %>% 
+  # Fill shell shucked
+  mutate(shell_shucked=ifelse(is.na(shell_shucked), "Unknown", shell_shucked)) %>% 
+  # Fill fresh/frozen
+  mutate(fresh_frozen=ifelse(is.na(fresh_frozen), "Unknown", fresh_frozen)) %>% 
+  # Fill monitoring type
+  mutate(monitoring_type=ifelse(is.na(monitoring_type), "Unknown", monitoring_type)) %>% 
+  # Format tissue
+  mutate_at(vars(da_tissue, dsp_tissue, psp_tissue), tolower) %>% 
   # Arrange
-  select(county, waterbody, site, subsite, site_id, lat_dd, long_dd,
+  select(state, outer_yn, county, waterbody, site, subsite, site_id, lat_dd, long_dd,
          organization, cert_number, 
          year_collected, month_collected, date_collected, 
          date_submitted, date_lab_received,
@@ -129,7 +168,7 @@ sort(unique(data$subsite))
 sort(unique(data$site_id))
 
 # Results
-sort(unique(data$da_result))
+sort(unique(data$da_result)) %>% rev()
 sort(unique(data$psp_result)) %>% rev()
 sort(unique(data$dsp_result)) %>% rev()
 
@@ -138,7 +177,12 @@ sort(unique(data$dsp_result)) %>% rev()
 # Adding waterbody duplicates 1
 # Adding site adds a few more
 site_key <- data %>% 
-  count(site_id, county, waterbody, site)
+  count(site_id, state, county, waterbody, site, lat_dd, long_dd)
+
+# Site key simple 
+site_key1 <- data %>% 
+  count(state, county, waterbody, site_id)
+freeR::which_duplicated(site_key1$site_id)
 
 # Organization key - learn more about this, not 1:1
 org_key <- data %>% 
@@ -155,6 +199,19 @@ table(data$sample_type)
 table(data$shell_shucked)
 table(data$fresh_frozen)
 table(data$monitoring_type)
+
+# Tissues
+table(data$da_tissue)
+table(data$psp_tissue)
+table(data$dsp_tissue)
+
+# Sites w/out GPS
+sites_no_gps <- data %>% 
+  filter(is.na(lat_dd)) %>% 
+  select(state:site_id) %>% 
+  unique() %>% 
+  filter(state=="Washington")
+n_distinct(sites_no_gps$site_id)
 
 
 # Export data

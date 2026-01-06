@@ -22,30 +22,24 @@ mussels_orig1 <- readxl::read_excel(file.path(indir, "Mussels.xlsx"))
 mussels_orig2 <- readxl::read_excel(file.path(indir, "Mussels.2015 to present.xlsx"))
 
 # Read key
-sample_key_crab <- readxl::read_excel(file.path(indir, "sample_key_crab.xlsx"))
-site_key_crab <- readxl::read_excel(file.path(indir, "site_key_crab.xlsx"))
+sample_key_crab <- readxl::read_excel("data/oregon/intermediate/sample_key_crab.xlsx")
 
-# Other Qs for Alex: tissue for bivalves?
-# Are the bivalves all wild? Are some famred?
+# IMPORTANT NOTE
+# In this script, I leave the SITE column untouched.
+# This makes it easier to harmonize sites and add GPS coordinates in the next script.
+# This makes it easier to update this process in the future, as I'll have a growing key
+# for listing coordinates of sites.
+# It also leaves the door open for ODA to provide me with a key of coordinates.
 
-# There are some 2027 dates
 
 # Clean crab
 ################################################################################
-
-# To do list:
-# Add coordinates
-
-# Questions
-# Are coords avaiable?
-# What is tissue if not provided?
-# What is cooked if not provided?
 
 # Clean crab
 crab <- crab_orig %>% 
   # Rename
   janitor::clean_names("snake") %>% 
-  rename(site_orig=results_product_date_location_shellfish_extract_location_name,
+  rename(site=results_product_date_location_shellfish_extract_location_name,
          subsite=results_product_sublocation_shellfish_extract_station_name,
          sample_type=results_product_shellfish_extract_product_desc,
          date=z_sample_date_d,
@@ -57,7 +51,11 @@ crab <- crab_orig %>%
          toxicity_long=z_analyte_comment_ct) %>% 
   # Remove useless
   select(-subsite) %>% 
-  # Convert
+  # Overwrite incorrect date
+  # Samples were collected at Cape Falcon to Cascade Head on 2017-02-23
+  mutate(date=case_when(date==ymd("2027-02-23") ~ ymd("2017-02-23"), 
+                        T ~ date)) %>% 
+  # Convert to numeric
   mutate(toxicity=as.numeric(toxicity)) %>% 
   # Format sample type
   mutate(sample_type=toupper(sample_type)) %>% 
@@ -65,6 +63,9 @@ crab <- crab_orig %>%
   left_join(sample_key_crab, by="sample_type") %>% 
   # Use info in TOXIN column to alter tisse
   mutate(tissue=ifelse(toxin=="Domoic Acid in Body Meat", "leg meat", tissue)) %>% 
+  # Add tissue use
+  mutate(tissue_use=recode(tissue,
+                           "not specified"="viscera")) %>% 
   # Format toxin
   mutate(toxin=recode(toxin, 
                       "Domoic Acid"="Domoic acid",
@@ -73,20 +74,21 @@ crab <- crab_orig %>%
   # Recode "ORIGINAL REPORT DATA" with UNITS = "ppm" as domoic acid
   mutate(toxin=case_when(toxin=="Original Report Data" & toxicity_units=="ppm" ~"Domoic acid",
                          T ~ toxin)) %>% 
-  # Add site metadata
-  left_join(site_key_crab, by="site_orig") %>% 
   # Overwrite site with area (which was extracted from sample column) if site == General History
-  mutate(site=ifelse(site=="General History" & !is.na(area), area, site)) %>% 
+  mutate(site=ifelse(site=="Crab Viscera- General History" & !is.na(area), area, site)) %>% 
   select(-area) %>% 
   # Fill modifier
   mutate(modifier=ifelse(is.na(modifier), "=", modifier)) %>% 
   # Add species name
   mutate(comm_name="Dungeness crab",
          species="Metacarcinus magister") %>% 
+  # Format units
+  mutate(toxicity_units=recode(toxicity_units,
+                               "ug/100gm" = "ug/100g")) %>% 
   # Arrange
-  select(site_orig, site, 
+  select(site, 
          date, time, 
-         comm_name, species, sample_type, tissue, cooked_yn, 
+         comm_name, species, sample_type, tissue, tissue_use, cooked_yn, 
          toxin, modifier, toxicity, toxicity_units, toxicity_long, 
          everything())
 
@@ -102,12 +104,16 @@ table(crab$toxin)
 
 # Tissue
 table(crab$tissue)
+table(crab$tissue_use)
 
 # Modifier
 table(crab$modifier)
 
 # Units
 table(crab$toxicity_units)
+
+# Date range
+range(crab$date, na.rm=T)
 
 
 # Clean clams
@@ -123,9 +129,14 @@ clams1 <- clams_orig1 %>%
          da=domoic_acid,
          psp_modifier=vari_for_psp,
          psp=psp_toxins) %>% 
-  # Add 
-  mutate(comm_name="Unspecified clam",
-         species="Clam spp.",
+  # Fill missing modifiers
+  mutate(da_modifier=ifelse(is.na(da_modifier), "=", da_modifier),
+         psp_modifier=ifelse(is.na(psp_modifier) | psp_modifier=="LAB", "=", psp_modifier)) %>% 
+  # Add missing info
+  # Alex Manderson confirmed in 1/5/2026 email that thse are all razor clam homogenates
+  # Homogenate = whole - gut ball
+  mutate(comm_name="Razor clam",
+         species="Siliqua patula",
          tissue="whole")
 
 # Inspect
@@ -134,7 +145,7 @@ freeR::complete(clams1)
 
 # Modifiers
 table(clams1$da_modifier)
-table(clams1$psp_modifier)
+table(clams1$psp_modifier) # LAB used to be an option
 
 # Clean clams
 clams2 <- clams_orig2 %>% 
@@ -174,8 +185,10 @@ clams2 <- clams_orig2 %>%
                           "Varnish clams" = "Purple varnish clam")) %>% 
   # Add species
   mutate(species=recode(comm_name,
-                        "Butter clam" = "Saxidomus gigantea",       
-                        "Gaper clam" = "Tresus capax",                 
+                        "Butter clam" = "Saxidomus gigantea",     
+                        # Alex Manderson said in 1/5/26 email that these are mostly T. capax
+                        # They could theoretically include T. nuttallii
+                        "Gaper clam" = "Tresus capax", 
                         "Littleneck clam" = "Leukoma staminea",            
                         "Nutall's cockle" = "Clinocardium nuttallii",           
                         "Purple varnish clam" = "Nuttallia obscurata",        
@@ -184,15 +197,17 @@ clams2 <- clams_orig2 %>%
                         "Unspecified clam" = "Clam spp.")) %>% 
   # Fill modifier
   mutate(modifier=ifelse(is.na(modifier), "=", modifier)) %>% 
-  # Format site
-  mutate(site=gsub(" Biotoxins", "", site)) %>% 
   # Format toxin
   mutate(toxin=recode(toxin, 
                       "Domoic Acid" = "Domoic acid",
                       "INELIGIBLE FOR ANALYSIS" = "Ineligible",
                       "NSSP Domoic Acid" = "Domoic acid")) %>% 
   # Add tissue
+  # Alex Manderson confirmed in 1/5/2026 email that thse are all razor clam homogenates
   mutate(tissue="whole") %>% 
+  # Format units
+  mutate(toxicity_units=recode(toxicity_units,
+                               "ug/100gm" = "ug/100g")) %>% 
   # Arrange
   select(date, time, site, comm_name, species, tissue,
          toxin, modifier, toxicity, toxicity_units, toxicity_long, everything())
@@ -201,7 +216,6 @@ clams2 <- clams_orig2 %>%
 str(clams2)
 freeR::complete(clams2)
 
-# Q for Alex: NSSP Domoic Acid vs. Domoic acid
 
 # Common name
 # https://www.dfw.state.or.us/mrp/shellfish/bayclams/clamid.asp
@@ -235,17 +249,27 @@ mussels1 <- mussels_orig1 %>%
          da=domoic_acid,
          psp_modifier=vari_for_psp,
          psp=psp_toxins) %>% 
-  # Add
-  mutate(comm_name="Unspecified mussel",
-         species="Mussel spp.",
+  # Fill modifier
+  mutate(psp_modifier=ifelse(is.na(psp_modifier), "=", psp_modifier)) %>% 
+  # Format modifiers
+  mutate(psp_modifier=recode(psp_modifier,
+                             "LAB"="=")) %>% 
+  # Add species / tissue
+  # Alex Manderson confirmed in 1/5/26 email that they are all California mussels
+  # Alex Manderson confirmed in 1/5/2026 email that thse are all homogenates
+  mutate(comm_name="California mussel",
+         species="Mytilus californianus",
          tissue="whole")
 
 # Inspect
 str(mussels1)
 freeR::complete(mussels1)
 table(mussels1$site)
+range(mussels1$date)
+table(mussels1$da_modifier)
+table(mussels1$psp_modifier)
 
-# Clmussels1# Clean mussels
+# Clean mussels 2
 mussels2 <- mussels_orig2 %>% 
   # Rename
   janitor::clean_names("snake") %>% 
@@ -265,19 +289,23 @@ mussels2 <- mussels_orig2 %>%
                       "NSSP Domoic Acid"="Domoic acid",
                       "INELIGIBLE FOR ANALYSIS"="Ineligible")) %>% 
   # Clean species
+  # Alex Manderson confirmed in 1/5/26 email that they are all California mussels
   mutate(comm_name=stringr::str_to_sentence(comm_name),
          comm_name=recode(comm_name, 
-                          "Mussels" = "Unspecified mussel",
+                          "Mussels" = "California mussel", # Unspecified mussel
                           "Ca mussels"="California mussel",
                           "California mussels"="California mussel")) %>%
   # Add species
   mutate(species=recode(comm_name,
-                        "California mussel" = "Mytilus californianus",
-                        "Unspecified mussel" = "Mussel spp.")) %>% 
-  # Clean site
-  mutate(site=gsub(" Biotoxins", "", site)) %>% 
+                        "California mussel" = "Mytilus californianus")) %>%
   # Add tissue
-  mutate(tissue="whole")
+  # Alex Manderson confirmed in 1/5/2026 email that thse are all homogenates
+  mutate(tissue="whole") %>% 
+  # Format units
+  mutate(toxicity_units=recode(toxicity_units,
+                               "ug/100gm" = "ug/100g")) %>% 
+  # Fill modifier
+  mutate(modifier=ifelse(is.na(modifier), "=", modifier))
 
 # Inspect
 str(mussels2)
@@ -294,10 +322,21 @@ sort(unique(mussels2$comm_name))
 # Build domoic data
 ################################################################################
 
+# Crabs
+crab_da <- crab %>% 
+  # Filter
+  filter(toxin=="Domoic acid") %>% 
+  # Select
+  select(date, site, comm_name, species, tissue, tissue_use, modifier, toxicity) %>% 
+  # Rename
+  rename(toxicity_ppm=toxicity)
+
 # Clams 1
 clams1_da <- clams1 %>% 
+  # Add 
+  mutate(tissue_use=tissue) %>% 
   # Select
-  select(date, site, comm_name, species, tissue, da_modifier, da) %>% 
+  select(date, site, comm_name, species, tissue, tissue_use, da_modifier, da) %>% 
   # Rename
   rename(modifier=da_modifier,
          toxicity_ppm=da)
@@ -306,15 +345,19 @@ clams1_da <- clams1 %>%
 clams2_da <- clams2 %>% 
   # Filter
   filter(toxin=="Domoic acid") %>% 
+  # Add 
+  mutate(tissue_use=tissue) %>% 
   # Select
-  select(date, site, comm_name, species, tissue, modifier, toxicity) %>% 
+  select(date, site, comm_name, species, tissue, tissue_use, modifier, toxicity) %>% 
   # Rename
   rename(toxicity_ppm=toxicity)
 
 # Mussels 1
 mussels1_da <- mussels1 %>% 
+  # Add 
+  mutate(tissue_use=tissue) %>% 
   # Select
-  select(date, site, comm_name, species, tissue, da_modifier, da) %>% 
+  select(date, site, comm_name, species, tissue, tissue_use, da_modifier, da) %>% 
   # Rename
   rename(modifier=da_modifier,
          toxicity_ppm=da)
@@ -323,24 +366,17 @@ mussels1_da <- mussels1 %>%
 mussels2_da <- mussels2 %>% 
   # Filter
   filter(toxin=="Domoic acid") %>% 
+  # Add 
+  mutate(tissue_use=tissue) %>% 
   # Select
-  select(date, site, comm_name, species, tissue, modifier, toxicity) %>% 
-  # Rename
-  rename(toxicity_ppm=toxicity)
-
-# Crabs
-crab_da <- crab %>% 
-  # Filter
-  filter(toxin=="Domoic acid") %>% 
-  # Select
-  select(date, site, comm_name, species, tissue, modifier, toxicity) %>% 
+  select(date, site, comm_name, species, tissue, tissue_use, modifier, toxicity) %>% 
   # Rename
   rename(toxicity_ppm=toxicity)
 
 # Merge
-data_da <- bind_rows(clams1_da, clams2_da,
-                     mussels1_da, mussels2_da,
-                     crab_da) %>% 
+data_da <- bind_rows(crab_da,
+                     clams1_da, clams2_da,
+                     mussels1_da, mussels2_da) %>% 
   # Format site
   mutate(site=stringr::str_to_title(site)) %>% 
   # Add year and month
@@ -368,13 +404,22 @@ ggplot(data_da, aes(y=site, x=date, color=comm_name, size=toxicity_ppm)) +
 # Build PSP data
 ################################################################################
 
+# Crabs
+crab_psp <- crab %>% 
+  # Filter
+  filter(toxin=="PSP") %>% 
+  # Select
+  select(date, site, comm_name, species, tissue, modifier, toxicity) %>% 
+  # Rename
+  rename(toxicity_ug_100g=toxicity)
+
 # Clams 1
 clams1_psp <- clams1 %>% 
   # Select
-  select(date, site, comm_name, species, tissue, da_modifier, da) %>% 
+  select(date, site, comm_name, species, tissue, psp_modifier, psp) %>% 
   # Rename
-  rename(modifier=da_modifier,
-         toxicity_ppm=da)
+  rename(modifier=psp_modifier,
+         toxicity_ug_100g=psp)
 
 # Clams 1
 clams2_psp <- clams2 %>% 
@@ -383,15 +428,15 @@ clams2_psp <- clams2 %>%
   # Select
   select(date, site, comm_name, species, tissue, modifier, toxicity) %>% 
   # Rename
-  rename(toxicity_ppm=toxicity)
+  rename(toxicity_ug_100g=toxicity)
 
 # Mussels 1
 mussels1_psp <- mussels1 %>% 
   # Select
-  select(date, site, comm_name, species, tissue, da_modifier, da) %>% 
+  select(date, site, comm_name, species, tissue, psp_modifier, psp) %>% 
   # Rename
-  rename(modifier=da_modifier,
-         toxicity_ppm=da)
+  rename(modifier=psp_modifier,
+         toxicity_ug_100g=psp)
 
 # Mussels 2
 mussels2_psp <- mussels2 %>% 
@@ -400,31 +445,12 @@ mussels2_psp <- mussels2 %>%
   # Select
   select(date, site, comm_name, species, tissue, modifier, toxicity) %>% 
   # Rename
-  rename(toxicity_ppm=toxicity)
-
-# Crabs
-crab_psp <- crab %>% 
-  # Filter
-  filter(toxin=="PSP") %>% 
-  # Select
-  select(date, site, comm_name, species, tissue, modifier, toxicity) %>% 
-  # Rename
-  rename(toxicity_ppm=toxicity)
+  rename(toxicity_ug_100g=toxicity)
 
 # Merge
-data_psp <- bind_rows(clams1_psp, clams2_psp,
-                     mussels1_psp, mussels2_psp,
-                     crab_psp) %>% 
-  # Format site
-  mutate(site=stringr::str_to_title(site),
-         site=recode(site,
-                     "Bastendorf Bch To Cape Arago" = "Bastendorf Beach To Cape Arago",
-                     "Clatsop Bch-Cannon Beach" = "Clatsop Beach-Cannon Beach",
-                     "Clatsop Beach/Del Ray" = "Clatsop Beach/Del Rey",
-                     "Netarts Bay\r" = "Netarts Bay",
-                     "Whiskey Run/Mid Coos Co Bchs" = "Whiskey Run/Mid Coos",
-                     "Newport Agate Beach" = "Newport Beaches @ Agate Beach",
-                     "Coos N Jetty & Spit" = "Coos N Jetty" )) %>% 
+data_psp <- bind_rows(crab_psp,
+                      clams1_psp, clams2_psp,
+                     mussels1_psp, mussels2_psp) %>% 
   # Add year and month
   mutate(year=lubridate::year(date),
          month=lubridate::month(date),
@@ -436,26 +462,34 @@ data_psp <- bind_rows(clams1_psp, clams2_psp,
 str(data_psp)
 freeR::complete(data_psp)
 
-
-# Insoect more
+# Inspect more
 table(data_psp$comm_name)
 table(data_psp$tissue)
 table(data_psp$modifier)
 freeR::uniq(data_psp$site)
 
 # Visualize
-ggplot(data_psp, aes(y=site, x=date, color=comm_name, size=toxicity_ppm)) +
+ggplot(data_psp, aes(y=site, x=date, color=comm_name, size=toxicity_ug_100g)) +
   geom_point()
+
+
+# Build DSP data
+################################################################################
+
+data_dsp <- mussels2 %>% 
+  # Filter
+  filter(toxin=="DSP") %>% 
+  # Select
+  select(date, site, comm_name, species, tissue, modifier, toxicity) %>% 
+  # Rename
+  rename(toxicity_ug_100g=toxicity)
 
 
 # Export data
 ################################################################################
 
-range(data_psp$year)
-range(data_da$year)
-
-
 # Export data
 saveRDS(data_psp, file=file.path(outdir, "ODA_1999_2025_psp_data.Rds"))
 saveRDS(data_da, file=file.path(outdir, "ODA_1999_2025_domoic_data.Rds"))
+saveRDS(data_dsp, file=file.path(outdir, "ODA_1999_2025_dsp_data.Rds"))
 
