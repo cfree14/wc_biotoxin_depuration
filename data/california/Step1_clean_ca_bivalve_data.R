@@ -12,13 +12,14 @@ library(tidyverse)
 # Directories
 indir <- "data/california/raw"
 outdir <- "data/california/processed"
+intdir <- "data/california/intermediate"
 
 # Read data
 data_orig1 <- readxl::read_excel(file.path(indir, "CDPH_domoic-acid-bivalve_data_121824.xlsx"), col_types = "text") # 1991-2024
 data_orig2 <- readxl::read_excel(file.path(indir, "DA_12-2024-2025.xlsx"), col_types = "text") # 2025
 
 # Sample key
-type_key <- readxl::read_excel(file.path(indir, "sample_type_key_bivalve_domoic.xlsx"))
+type_key <- readxl::read_excel(file.path(intdir, "sample_type_key_bivalve_domoic.xlsx"))
 
 
 # Clean data
@@ -34,7 +35,7 @@ data <- bind_rows(data_orig1, data_orig2) %>%
   janitor::clean_names("snake") %>% 
   rename(sample_id=srl_number,
          site=sample_site,
-         date=date_sampled, 
+         date=date_sampled,
          lat_dd=latitude,
          long_dd=longitude, 
          sample_type_code=shellfish_code, 

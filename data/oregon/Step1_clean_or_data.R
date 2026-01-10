@@ -61,7 +61,7 @@ crab <- crab_orig %>%
   mutate(sample_type=toupper(sample_type)) %>% 
   # Add sample key metadata
   left_join(sample_key_crab, by="sample_type") %>% 
-  # Use info in TOXIN column to alter tisse
+  # Use info in TOXIN column to alter tissue
   mutate(tissue=ifelse(toxin=="Domoic Acid in Body Meat", "leg meat", tissue)) %>% 
   # Add tissue use
   mutate(tissue_use=recode(tissue,
@@ -84,7 +84,8 @@ crab <- crab_orig %>%
          species="Metacarcinus magister") %>% 
   # Format units
   mutate(toxicity_units=recode(toxicity_units,
-                               "ug/100gm" = "ug/100g")) %>% 
+                               "ug/100gm" = "ug/100g"),
+         toxicity_units=ifelse(toxin=="Ineligible", "not tested", toxicity_units)) %>% 
   # Arrange
   select(site, 
          date, time, 
@@ -101,6 +102,9 @@ table(crab$site)
 
 # Toxin
 table(crab$toxin)
+
+# Sample type
+sort(unique(crab$sample_type))
 
 # Tissue
 table(crab$tissue)
@@ -479,8 +483,12 @@ ggplot(data_psp, aes(y=site, x=date, color=comm_name, size=toxicity_ug_100g)) +
 data_dsp <- mussels2 %>% 
   # Filter
   filter(toxin=="DSP") %>% 
-  # Select
-  select(date, site, comm_name, species, tissue, modifier, toxicity) %>% 
+  # Add year and month
+  mutate(year=lubridate::year(date),
+         month=lubridate::month(date),
+         sample_id=make.unique(paste(date, comm_name, sep="-"))) %>% 
+  # Arrange
+  select(sample_id, year, month, date, site, comm_name, species, tissue, modifier, toxicity) %>% 
   # Rename
   rename(toxicity_ug_100g=toxicity)
 

@@ -12,6 +12,7 @@ library(tidyverse)
 # Directories
 indir <- "data/california/raw"
 outdir <- "data/california/processed"
+intdir <- "data/california/intermediate"
 
 # Read data
 data_orig1 <- readxl::read_excel(file.path(indir, "PSP_2020-2025-todate.xlsx"), na="")
@@ -20,7 +21,7 @@ data_orig3 <- readxl::read_excel(file.path(indir, "PSP_shellfish_EMB_2010-2019.x
 data_orig4 <- readxl::read_excel(file.path(indir, "PSP_shellfish_EMB_before2000.xlsx"), na="")
 
 # Read key
-type_key <- readxl::read_excel(file.path(indir, "sample_type_key_bivalve_psp.xlsx"))
+type_key <- readxl::read_excel(file.path(intdir, "sample_type_key_bivalve_psp.xlsx"))
 
 # Looks like some blank species names
 # Seperate sample tupe into tissue/source/common name
@@ -114,7 +115,7 @@ table(data$county)
 spp_key <- data %>% 
   count(species, comm_name)
 freeR::which_duplicated(spp_key$species)
-freeR::which_duplicated(spp_key$comm_name)
+freeR::which_duplicated(spp_key$comm_name) # FIX THIS
 
 # Type key
 sample_type_key <- data %>% 

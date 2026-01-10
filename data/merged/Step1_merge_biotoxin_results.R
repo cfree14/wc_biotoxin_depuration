@@ -22,8 +22,8 @@ ca_orig <- readRDS(file=file.path(cadir, "CDPH_1991_2025_all_domoic_data.Rds"))
 wa_orig <- readRDS(file=file.path(wadir, "WDOH_1957_2025_biotoxin_data.Rds"))
 
 # Read OR data
-or_da_orig <- readRDS(file=file.path(ordir, "ODA_1999_2025_domoic_data.Rds"))
-or_psp_orig <- readRDS(file=file.path(ordir, "ODA_1999_2025_psp_data.Rds"))
+or_da_orig <- readRDS(file=file.path(ordir, "ODA_1999_2025_domoic_data_gps.Rds"))
+or_psp_orig <- readRDS(file=file.path(ordir, "ODA_1999_2025_psp_data_gps.Rds"))
 
 
 # Format data
@@ -37,7 +37,7 @@ ca <- ca_orig %>%
   select(state, sample_id, year, month, date, 
          site, lat_dd, long_dd, 
          comm_name, species, 
-         tissue, source, #tissue_use, source_use,
+         tissue, source, tissue_use, source_use,
          modifier, toxicity_ug_g) %>% 
   # Rename
   rename(toxicity_ppm=toxicity_ug_g)
@@ -46,11 +46,12 @@ ca <- ca_orig %>%
 or <- or_da_orig %>% 
   # Add state
   mutate(state="Oregon",
-         source="not specified") %>% 
+         source="not specified", 
+         source_use=source) %>% 
   # Simplify
   select(state, sample_id, year, month, date, 
-         site, #lat_dd, long_dd, 
-         comm_name, species, tissue, source, 
+         site, lat_dd, long_dd, 
+         comm_name, species, tissue, tissue_use, source, 
          modifier, toxicity_ppm)
 
 # Format WA data
@@ -58,7 +59,8 @@ wa <- wa_orig %>%
   # Reduce
   filter(state=="Washington") %>% 
   # Add state
-  mutate( source="not specified") %>% 
+  mutate(source="not specified",
+         source_use=source) %>% 
   # Reduce to domoic
   filter(!is.na(da_id)) %>% 
   # Simplify
@@ -73,7 +75,9 @@ wa <- wa_orig %>%
          month=month_collected,
          date=date_collected,
          tissue=da_tissue,
-         toxicity_ppm=da_result)
+         toxicity_ppm=da_result) %>% 
+  # Add
+  mutate(tissue_use=tissue)
 
 
 # Merge

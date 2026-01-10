@@ -12,12 +12,13 @@ library(tidyverse)
 # Directories
 indir <- "data/california/raw"
 outdir <- "data/california/processed"
+intdir <- "data/california/intermediate"
 
 # Read data
 data_orig <- readxl::read_excel(file.path(indir, "DA_other_finfish.xlsx"))
 
 # Read sample type key
-type_key <- readxl::read_excel(file.path(indir, "sample_type_key_finfish.xlsx"))
+type_key <- readxl::read_excel(file.path(intdir, "sample_type_key_finfish.xlsx"))
 
 
 # Format data
@@ -41,8 +42,8 @@ data <- data_orig %>%
                         "Seriola lalandi dorsalis" = "Seriola lalandi")) %>% 
   # Fill missing scientific names
   mutate(species=case_when(is.na(species) & grepl("sardine", tolower(sample_type)) ~ "Sardinops sagax",
-                           is.na(species) & grepl("mackeral", tolower(sample_type)) ~ "Scomber japonicus",
-                           is.na(species) & grepl("mackeral", tolower(sample_type)) ~ "Scomber japonicus",
+                           is.na(species) & grepl("mackeral", tolower(sample_type)) ~ "Mackerel spp.", # Jack mackerel or chub mackerel?
+                           is.na(species) & grepl("mackeral", tolower(sample_type)) ~ "Mackerel spp.",
                            is.na(species) & grepl("salmon", tolower(sample_type)) ~ "Salmon spp.", # Oncorhynchus tshawytscha
                            is.na(species) & grepl("shrimp", tolower(sample_type)) ~ "Shrimp spp.", # Pandalus jordani
                            is.na(species) & grepl("squid", tolower(sample_type)) ~ "Squid spp.", # Doryteuthis opalescens

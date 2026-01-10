@@ -45,8 +45,20 @@ grid <- grid_orig %>%
          county_id=county_code) %>% 
   # Format longitude
   mutate(long_dd=abs(long_dd)*-1) %>% 
+  # Fix county code
+  # This isn't official - just your judgement
+  mutate(county_id=case_when(county=="Grays Harbor" ~ "24", 
+                             is.na(county_id) ~ "00",
+                             T ~ county_id)) %>% 
+  # Fix county
+  mutate(county=case_when(is.na(county) | county=="British Columbia" ~ "Unknown",
+                          T ~ county)) %>% 
+  # Check waterbody (they only disagree in a few places and waterbody use is better)
+  mutate(waterbody_check=waterbody==waterbody_use) %>% 
+  select(-c(waterbody, waterbody_check)) %>% 
+  rename(waterbody=waterbody_use) %>% 
   # Arrange
-  select(site_id, waterbody_id, waterbody, waterbody_use, everything())
+  select(site_id, waterbody_id, waterbody, everything())
 
 # Unique id?
 freeR::which_duplicated(grid$site_id)
@@ -61,7 +73,7 @@ ggplot() +
 
 # Waterbody key
 waterbody_key <- grid %>% 
-  count(waterbody_id, waterbody, waterbody_use)
+  count(waterbody_id, waterbody)
 freeR::which_duplicated(waterbody_key$waterbody_id)
 
 # County key
@@ -103,22 +115,40 @@ data <- data_orig %>%
   mutate(comm_name=stringr::str_to_sentence(comm_name)) %>% 
   # Add species
   left_join(spp_orig %>% select(comm_name, species), by="comm_name") %>% 
+  # Update common names
+  mutate(comm_name=recode(comm_name,
+                          "Bent nose clam"="Bent-nose macoma clam",
+                          "Cockle"="Nuttall's cockle",
+                          "Abalone"="Pinto abalone",
+                          "Varnish clam"="Purple varnish clam",
+                          "Kelp crab"="Northern kelp crab")) %>% 
+  # Fix a CA site that incorrectly has a WA site id
+  # mutate(site_id=ifelse(subsite=="2-CSR-PSP-NE50-  8/13/18" & !is.na(subsite), "USCA001", site_id),
+  #        site=ifelse(subsite=="2-CSR-PSP-NE50-  8/13/18" & !is.na(subsite), "CSR-US-Pacific 100-000-1590", site),
+  #        waterbody=ifelse(subsite=="2-CSR-PSP-NE50-  8/13/18" & !is.na(subsite), "California", waterbody)) %>%
+  # Fix an incorrect site
+  mutate(site=recode(site,
+                     "Mukkaw Bay" = "Makah Bay",
+                     "Sunny Shore Acres" = "Tillicum Beach")) %>%
   # Add lat/long
   left_join(grid %>% select(site_id, lat_dd, long_dd), by="site_id") %>% 
   # Recode DA: <1, NoTest, NTD, UNSAT
-  mutate(da_result=recode(da_result, 
+  mutate(da_modifier=ifelse(da_result %in% c("<1", "NTD"), "<", "="),
+         da_result=recode(da_result, 
                           "NoTest"="",
                           "NTD"="1",
                           "UNSAT"="",
                           "<1"="1") %>% as.numeric(.)) %>% 
   # Recode PSP: <38, UNSAT, NTD, NoTest
-  mutate(da_result=recode(psp_result, 
+  mutate(psp_modifier=ifelse(psp_result %in% c("<38", "NTD"), "<", "="),
+         psp_result=recode(psp_result, 
                           "NoTest"="",
                           "NTD"="38",
                           "UNSAT"="",
                           "<38"="38") %>% as.numeric(.)) %>% 
   # Recode DSP: <1, UNSAT, NTD, No Test
-  mutate(dsp_result=recode(dsp_result, 
+  mutate(dsp_modifier=ifelse(dsp_result %in% c("<1", "NTD"), "<", "="),
+         dsp_result=recode(dsp_result, 
                           "No Test"="",
                           "NTD"="1",
                           "UNSAT"="",
@@ -135,7 +165,7 @@ data <- data_orig %>%
   mutate(county=case_when(organization=="Catalina Sea Ranch" ~ "Los Angeles", 
                           T ~ county)) %>% 
   # Mark coastal (yes/no)
-  mutate(outer_yn=ifelse(county %in% "Pacific", "Grays Harbor", "Jefferson")) %>% 
+  mutate(outer_yn=ifelse(county %in% c("Pacific", "Grays Harbor", "Jefferson"), "yes", "no")) %>% 
   # Fill shell shucked
   mutate(shell_shucked=ifelse(is.na(shell_shucked), "Unknown", shell_shucked)) %>% 
   # Fill fresh/frozen
@@ -150,9 +180,9 @@ data <- data_orig %>%
          year_collected, month_collected, date_collected, 
          date_submitted, date_lab_received,
          comm_name, species, sample_type, shell_shucked, fresh_frozen, monitoring_type,
-         da_id, da_date, da_tissue, da_result,
-         psp_id, psp_date, psp_tissue, psp_result,
-         dsp_id, dsp_date, dsp_tissue, dsp_result,
+         da_id, da_date, da_tissue, da_modifier, da_result,
+         psp_id, psp_date, psp_tissue, psp_modifier, psp_result,
+         dsp_id, dsp_date, dsp_tissue, dsp_modifier, dsp_result,
          everything())
 
 # Inspect
@@ -173,18 +203,12 @@ sort(unique(data$psp_result)) %>% rev()
 sort(unique(data$dsp_result)) %>% rev()
 
 
-# Site key - clean this up
-# Adding waterbody duplicates 1
-# Adding site adds a few more
+# Site key
 site_key <- data %>% 
-  count(site_id, state, county, waterbody, site, lat_dd, long_dd)
+  count(site_id, state, county, waterbody, site) # lat_dd, long_dd) 
+freeR::which_duplicated(site_key$site_id) # don't worry about USCA000 (California code)
 
-# Site key simple 
-site_key1 <- data %>% 
-  count(state, county, waterbody, site_id)
-freeR::which_duplicated(site_key1$site_id)
-
-# Organization key - learn more about this, not 1:1
+# Organization key - learn more about this, not 1:1, messed up but who cares
 org_key <- data %>% 
   count(organization, cert_number)
 freeR::which_duplicated(org_key$organization)
@@ -193,6 +217,8 @@ freeR::which_duplicated(org_key$cert_number)
 # Species
 spp_key <- data %>% 
   count(comm_name, species)
+freeR::which_duplicated(spp_key$comm_name)
+freeR::which_duplicated(spp_key$species)
 
 # Sample info
 table(data$sample_type)
@@ -208,11 +234,13 @@ table(data$dsp_tissue)
 # Sites w/out GPS
 sites_no_gps <- data %>% 
   filter(is.na(lat_dd)) %>% 
-  select(state:site_id) %>% 
+  select(state, county, waterbody, site, site_id) %>% 
   unique() %>% 
-  filter(state=="Washington")
+  filter(state=="Washington") %>% 
+  select(-state) %>% arrange(county)
 n_distinct(sites_no_gps$site_id)
-
+sum(sites_no_gps$site_id%in%grid$site_id)
+write.csv(sites_no_gps, file="data/washington/intermediate/sites_wout_gps_coords.csv")
 
 # Export data
 ################################################################################
