@@ -59,6 +59,7 @@ data <- data_merged %>%
   mutate(species=recode(species,
                         "Clinocardium nuttalli" = "Clinocardium nuttallii", 
                         "Crassostrea sikamea" = "Magallana sikamea",
+                        "Crassostrea gigas" = "Magallana gigas",
                         "Mytilus gallo/trossulus/edulis" = "Mytilus galloprovincialis/trossulus/edulis",
                         "Prototheca staminea" = "Leukoma staminea", 
                         "Sanguinolaria nuttallii" = "Nuttallia nuttallii",

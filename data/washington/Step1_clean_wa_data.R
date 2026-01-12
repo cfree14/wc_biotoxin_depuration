@@ -182,6 +182,7 @@ data <- data_orig %>%
          dsp_tissue=ifelse(is.na(dsp_tissue), "not specified", dsp_tissue)) %>% 
   # Update common name for coastwide harmonization
   mutate(comm_name=case_when(species=="Tresus capax" ~ "Fat gaper clam",
+                             species=="Mytilus trossulus" ~ "Pacific blue mussel",
                              T ~ comm_name)) %>% 
   # Arrange
   select(state, outer_yn, county, waterbody, site, subsite, site_id, lat_dd, long_dd,
