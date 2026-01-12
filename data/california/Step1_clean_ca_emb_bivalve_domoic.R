@@ -10,7 +10,7 @@ library(stringr)
 library(tidyverse)
 
 # Directories
-indir <- "data/california/raw"
+indir <- "data/california/raw/emb_vanessa"
 outdir <- "data/california/processed"
 intdir <- "data/california/intermediate"
 
@@ -19,11 +19,19 @@ data_orig1 <- readxl::read_excel(file.path(indir, "CDPH_domoic-acid-bivalve_data
 data_orig2 <- readxl::read_excel(file.path(indir, "DA_12-2024-2025.xlsx"), col_types = "text") # 2025
 
 # Sample key
-type_key <- readxl::read_excel(file.path(intdir, "sample_type_key_bivalve_domoic.xlsx"))
+type_key_orig <- readxl::read_excel(file.path(intdir, "sample_type_key_bivalve_domoic.xlsx"))
+
+# To do list
+# 1) Add missing coordinates
 
 
 # Clean data
 ################################################################################
+
+# Wild species
+wild_species <- c("Basket cockle", "Bent nose clam", "Fat gaper clam", "Pacific gaper clam", 
+                  "Littleneck clam", "Manila clam", "Pismo clam", "Purple clam", 
+                  "Razor clam", "Rock scallop", "Unidentified clam", "Washington clam")
 
 # Column names
 colnames(data_orig1)
@@ -58,7 +66,7 @@ data <- bind_rows(data_orig1, data_orig2) %>%
                         "Tapes japonica" = "Ruditapes philippinarum",
                         "Mytilus gallo/trossulus/edulis"="Mytilus galloprovincialis/trossulus/edulis")) %>% 
   # Add sample type info
-  left_join(type_key, by="sample_type") %>% 
+  left_join(type_key_orig, by="sample_type") %>% 
   # Fix common name
   mutate(comm_name=case_when(species=="Mytilus galloprovincialis/trossulus/edulis" ~ "Sea/blue/bay mussels",
                              species=="Tresus nuttallii" ~ "Pacific gaper clam",
@@ -68,7 +76,7 @@ data <- bind_rows(data_orig1, data_orig2) %>%
   mutate(source=ifelse(is.na(source), "not specified", source)) %>% 
   # Add tissue/source with assumptions
   mutate(tissue_use=recode(tissue, "not specified"="whole"),
-         source_use=recode(source, "not specified"="wild")) %>% 
+         source_use=ifelse(source=="not specified" & comm_name %in% wild_species, "wild", source)) %>% 
   # Format scientific name
   mutate(species=case_when(comm_name=="Sea/bay mussels" ~ "Mytilus galloprovincialis/edulis", 
                            comm_name=="Unidentified clam" ~ "Bivalvia spp.",
@@ -76,6 +84,16 @@ data <- bind_rows(data_orig1, data_orig2) %>%
   # Add date info
   mutate(year=lubridate::year(date),
          month=lubridate::month(date)) %>% 
+  # Format modifier
+  mutate(modifier=ifelse(is.na(modifier), "=", modifier)) %>% 
+  # Update common names for coastwide harmonization
+  mutate(comm_name=recode(comm_name,
+                          "Basket cockle"="Nuttall's cockle",
+                          "Bay mussel"="Mediterranean mussel", # In this file, bay mussel are Mytilus galloprovincialis
+                          "Sea mussel"="California mussel", # In this file, sea mussel are Mytilus californianus
+                          "Sea/bay mussels"="Mediterranean/blue mussels", 
+                          "Sea/blue/bay mussels"="Mediterranean/Pacific blue/blue mussels"
+                          )) %>% 
   # Arrange
   select(sample_id, year, month, date, 
          agency_code, county, site, lat_dd, long_dd, 
@@ -100,9 +118,12 @@ table(data$source)
 # Source
 table(data$tissue)
 
+# Modifier
+table(data$modifier)
+
 # Sample type
 type_key <- data %>% 
-  count(sample_type_code, sample_type, comm_name, tissue, source)
+  count(sample_type_code, sample_type, comm_name, tissue, source, source_use)
 freeR::which_duplicated(type_key$sample_type_code)
 
 # Lat/long
@@ -131,7 +152,7 @@ site_key <- data %>%
 # Plots
 ################################################################################
 
-ggplot(data, aes(x=date, y=lat_dd, color=source_use, size=toxicity_ug_g)) +
+ggplot(data, aes(x=date, y=lat_dd, color=source, size=toxicity_ug_g)) +
   facet_wrap(~comm_name, ncol=5) +
   geom_point() +
   # Labels
@@ -145,7 +166,7 @@ ggplot(data, aes(x=date, y=lat_dd, color=source_use, size=toxicity_ug_g)) +
 
 # Export
 range(data$year)
-saveRDS(data, file=file.path(outdir, "CDPH_1991_2025_bivalve_domoic_data.Rds"))
+saveRDS(data, file=file.path(outdir, "CDPH_EMB_1991_2025_bivalve_domoic_data.Rds"))
 
 
 

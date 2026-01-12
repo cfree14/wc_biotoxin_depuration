@@ -1,0 +1,27 @@
+Paralytic Shellfish Poisoning Toxins Data Discliamers
+
+-The “Mod” data field before the biotoxin value field is a modifier field that should be added in front of the biotoxin value (IE. < 38 ug/100g PSP toxins).
+
+-“n” in the Mod field means non-detect on the screening test, a qualitive, +/- test result.
+
+Our usual procedure is to test a sample with the screening test, if positive, test on mouse bioassay.
+
+-Mussel and oyster samples are homogenates of at least 12 or more individuals. Other species of shellfish may not contain this minimum number.  
+
+-Sample station coordinates are approximate. These have not been QCd or ground-truthed and may be incorrect. 
+
+-The shellfish growing area samples are generally collected weekly. There may be some breaks in data due to an area being temporarily closed for a variety of reasons.
+
+-The non-commercial sample sites are not sampled on a routine basis. Volunteer sampling is sporadic, based on the schedules of volunteers and plankton events. This data is not good for time series analysis. 
+
+-Data errors: There were some instances where a sample was entered twice or there was a duplicate sample tested and entered into the database.  We tried to remove these errors, but some may remain.
+
+-Qualitative screening test. Years 2005-2021: Scotia Rapid Test (the detection limit of this test is possibly around 10 ug/100g), years 2022-April 2024: NeoGen Reveal 2.0 (detection limit possibly around 30-40 ug/100g), May 2024-on AquaBC. Between 9/2021 to 5/2022 there were limited screening tests, at some point all samples tested on mouse bioassay.
+
+- Historical PSP data, for the oldest PSP data, only the positive results were entered into the database.
+
+-Quantitative Analysis via Mouse Bioassay (Paralytic Shellfish Poisoning (PSP) and Neurotoxic Shellfish Poisoning (NSP) Methods American Public Health Association. 1970. Recommended Procedures for the Examination of Sea Water and Shellfish, 4th Edition, APHA, New York, N.Y.)
+
+-Citations: Please cite the California Department of Public Health, Environmental Management Branch.
+
+ 

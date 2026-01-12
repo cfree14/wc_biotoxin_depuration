@@ -38,9 +38,10 @@ ca <- ca_orig %>%
          site, lat_dd, long_dd, 
          comm_name, species, 
          tissue, source, tissue_use, source_use,
-         modifier, toxicity_ug_g) %>% 
+         modifier, domoic_ppm) %>% 
   # Rename
-  rename(toxicity_ppm=toxicity_ug_g)
+  rename(toxicity_ppm=domoic_ppm)
+freeR::complete(ca)
 
 # Format OR data
 or <- or_da_orig %>% 
@@ -51,33 +52,34 @@ or <- or_da_orig %>%
   # Simplify
   select(state, sample_id, year, month, date, 
          site, lat_dd, long_dd, 
-         comm_name, species, tissue, tissue_use, source, 
+         comm_name, species, 
+         tissue, tissue_use, source, source_use, 
          modifier, toxicity_ppm)
+freeR::complete(or)
 
 # Format WA data
 wa <- wa_orig %>% 
   # Reduce
-  filter(state=="Washington") %>% 
-  # Add state
-  mutate(source="not specified",
-         source_use=source) %>% 
-  # Reduce to domoic
-  filter(!is.na(da_id)) %>% 
-  # Simplify
-  select(state, da_id, year_collected, month_collected, date_collected, 
-         site, lat_dd, long_dd, 
-         comm_name, species, 
-         da_tissue, source, 
-         da_result) %>% 
+  filter(state=="Washington" & !is.na(da_id)) %>% 
   # Rename
   rename(sample_id=da_id,
          year=year_collected,
          month=month_collected,
          date=date_collected,
          tissue=da_tissue,
+         modifier=da_modifier,
          toxicity_ppm=da_result) %>% 
   # Add
-  mutate(tissue_use=tissue)
+  mutate(source="not specified",
+         source_use=source,
+         tissue_use=tissue) %>% 
+  # Simplify
+  select(state, sample_id, year, month, date, 
+         site, lat_dd, long_dd, 
+         comm_name, species, 
+         tissue, tissue_use, source, source_use, 
+         modifier, toxicity_ppm)
+freeR::complete(wa)
 
 
 # Merge
@@ -97,9 +99,11 @@ freeR::which_duplicated(data$sample_id)
 
 # Tissue
 table(data$tissue)
+table(data$tissue_use)
 
 # Source
 table(data$source)
+table(data$source_use)
 
 # Modifier
 table(data$modifier)
@@ -111,7 +115,7 @@ freeR::which_duplicated(spp_key$comm_name)
 freeR::which_duplicated(spp_key$species)
 
 # Plot
-ggplot(data, aes(x=date, y=lat_dd, color=comm_name, size=toxicity_ppm)) +
+ggplot(data %>% filter(year>=2020), aes(x=date, y=lat_dd, color=comm_name, size=toxicity_ppm)) +
   geom_point() +
   # Legend
   scale_color_discrete(guide="none") +

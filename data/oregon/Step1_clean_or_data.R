@@ -171,14 +171,14 @@ clams2 <- clams_orig2 %>%
                           "Butter clams" = "Butter clam",          
                           "Clams" = "Unspecified clam",                   
                           "Clams, butter" = "Butter clam",           
-                          "Clams, cockle" = "Nutall's cockle",           
+                          "Clams, cockle" = "Nuttall's cockle",           
                           "Clams, gaper" = "Gaper clam",           
                           "Clams, purple varnish" = "Purple varnish clam",   
                           "Clams, razor" = "Razor clam",           
                           "Clams, softshell" = "Softshell clam",        
                           "Clams,razor" = "Razor clam",             
                           "Clams. Razor" = "Razor clam",           
-                          "Cockle clams" = "Nutall's cockle",           
+                          "Cockle clams" = "Nuttall's cockle",           
                           "Eastern thinshell clams" = "Softshell clam",
                           "Gaper clams" = "Gaper clam",             
                           "Littleneck clams" = "Littleneck clam",        
@@ -194,7 +194,7 @@ clams2 <- clams_orig2 %>%
                         # They could theoretically include T. nuttallii
                         "Gaper clam" = "Tresus capax", 
                         "Littleneck clam" = "Leukoma staminea",            
-                        "Nutall's cockle" = "Clinocardium nuttallii",           
+                        "Nuttall's cockle" = "Clinocardium nuttallii",           
                         "Purple varnish clam" = "Nuttallia obscurata",        
                         "Razor clam" = "Siliqua patula",                
                         "Softshell clam" = "Mya arenaria",            
@@ -212,6 +212,9 @@ clams2 <- clams_orig2 %>%
   # Format units
   mutate(toxicity_units=recode(toxicity_units,
                                "ug/100gm" = "ug/100g")) %>% 
+  # Update common name for coastwide harmonization
+  mutate(comm_name=case_when(species=="Tresus capax" ~ "Fat gaper clam",
+                             T ~ comm_name)) %>% 
   # Arrange
   select(date, time, site, comm_name, species, tissue,
          toxin, modifier, toxicity, toxicity_units, toxicity_long, everything())

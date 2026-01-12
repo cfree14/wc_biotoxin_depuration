@@ -9,9 +9,10 @@ rm(list = ls())
 # Packages
 library(stringr)
 library(tidyverse)
+library(plotly)
 
 # Directories
-indir <- "data/california/raw_christina"
+indir <- "data/california/raw/fdb_christina"
 outdir <- "data/california/processed"
 intdir <- "data/california/intermediate"
 
@@ -34,9 +35,9 @@ crab22_orig <- readxl::read_excel(file.path(indir, "PRAR_DA_2015-2025_12_19_25.x
 crab23_orig <- readxl::read_excel(file.path(indir, "PRAR_DA_2015-2025_12_19_25.xlsx"), sheet="Crab 2023-2024", col_types = "text") 
 crab24_orig <- readxl::read_excel(file.path(indir, "PRAR_DA_2015-2025_12_19_25.xlsx"), sheet="Crab 2024-2025", col_types = "text") 
 crab25_orig <- readxl::read_excel(file.path(indir, "PRAR_DA_2015-2025_12_19_25.xlsx"), sheet="Crab 2025-2026", col_types = "text") 
-lobster23_orig <- readxl::read_excel(file.path(indir, "PRAR_DA_2015-2025_12_19_25.xlsx"), sheet="Lobster 2023-2024", na="n/a") 
-seafood24_orig <- readxl::read_excel(file.path(indir, "PRAR_DA_2015-2025_12_19_25.xlsx"), sheet="Seafood 2024-2025") 
 
+# To do
+# DONE.- unless you ever wanted to clean up depth
 
 # Dcrab coordinate key
 ################################################################################
@@ -154,6 +155,9 @@ crab <- crab_orig %>%
   # Add a truly unique id
   rename(sample_id_orig=sample_id) %>% 
   mutate(sample_id=make.unique(sample_id_orig)) %>% 
+  # Because some original sample ids are blank, 
+  # the first blank sample id is simply NA, recode it as NA.0
+  mutate(sample_id=ifelse(is.na(sample_id), "NA.0", sample_id)) %>% 
   # Arrange
   select(sample_id, sample_id_orig, date,
          port, area, 
@@ -196,146 +200,5 @@ crab_coords <- sort(unique(crab$coords))
 crab_coords[!crab_coords %in% coord_key$coords] %>% unique()
 
 # Export
-saveRDS(crab, file=file.path(outdir, "CDPH_2015_2025_crab_domoic_data.Rds"))
+saveRDS(crab, file=file.path(outdir, "CDPH_FDB_2015_2025_crab_domoic_data.Rds"))
 
-
-# Format lobster data
-################################################################################
-
-# Convert DM to DD
-conv_dm_to_dd <- function(x) {
-  # Vectorized converter: "DD MM.mmm" -> decimal degrees
-  # Handles NAs, extra spaces, and optional leading +/- sign.
-  
-  x <- trimws(x)
-  out <- rep(NA_real_, length(x))
-  
-  ok <- !is.na(x) & nzchar(x)
-  if (!any(ok)) return(out)
-  
-  # Split on whitespace (one or more spaces/tabs)
-  parts <- strsplit(x[ok], "\\s+")
-  
-  # Expect at least 2 tokens: degrees and minutes
-  deg <- suppressWarnings(as.numeric(vapply(parts, `[`, character(1), 1)))
-  min <- suppressWarnings(as.numeric(vapply(parts, `[`, character(1), 2)))
-  
-  # Preserve sign on degrees (e.g., "-33 42.087" or "+33 42.087")
-  sign_deg <- ifelse(is.na(deg), NA_real_, ifelse(deg < 0, -1, 1))
-  deg_abs  <- abs(deg)
-  
-  dd <- sign_deg * (deg_abs + (min / 60))
-  
-  # If parsing failed, dd will be NA
-  out[ok] <- dd
-  out
-}
-
-# Format data
-lobster <- lobster23_orig %>% 
-  # Rename
-  janitor::clean_names("snake") %>% 
-  rename(sample_id=is_number,
-         comm_name=species_viscera, 
-         block_id=block_number,
-         depth_fa=depth_fathoms,
-         coords=lat_long_coordinates,
-         area=collection_sites,
-         date=date_of_catch) %>% 
-  # Format common name
-  mutate(comm_name=stringr::str_to_sentence(comm_name),
-         species="Panulirus interruptus") %>% 
-  # Split coordinates
-  separate(coords, sep="-", into=c("lat_dd", "long_dd"), remove=F) %>% 
-  mutate(lat_dd=conv_dm_to_dd(lat_dd),
-         long_dd=conv_dm_to_dd(long_dd)*-1) %>% 
-  # Format toxicity
-  mutate(viscera_mod=ifelse(grepl("<", viscera_ppm), "<", "="),
-         viscera_ppm=gsub("<", "", viscera_ppm) %>% as.numeric(.),
-         meat_mod=ifelse(grepl("<", meat_ppm), "<", "="),
-         meat_ppm=gsub("<", "", meat_ppm) %>% as.numeric(.),
-         roe_mod=ifelse(grepl("<", roe_ppm), "<", "="),
-         roe_ppm=gsub("<", "", roe_ppm) %>% as.numeric(.)) %>% 
-  # Arrange
-  select(sample_id, date,
-         port, area, block_id, coords, lat_dd, long_dd, depth_fa,
-         comm_name, species, 
-         viscera_mod, viscera_ppm, 
-         meat_mod, meat_ppm, 
-         roe_mod, roe_ppm,
-         everything())
-
-# Inspect
-str(lobster)
-freeR::complete(lobster)
-
-# Inspect more
-range(lobster$date)
-table(lobster$port)
-table(lobster$area)
-table(lobster$block_id)
-table(lobster$coords)
-table(lobster$comm_name)
-
-# Export
-saveRDS(lobster, file.path(outdir, "CDPH_2023_lobster_domoic_data.Rds"))
-
-
-# Format seafood data
-################################################################################
-
-# Format
-seafood <- seafood24_orig %>% 
-  # Rename
-  janitor::clean_names("snake") %>% 
-  rename(sample_id=is_number,
-         comm_name=species, 
-         block_id=block_number,
-         date=date_of_catch,
-         toxicity_ppm=result_ppm_fda_action_30) %>% 
-  # Format block id
-  mutate(block_id=gsub("Block ", "", block_id) ) %>% 
-  # Add lat/long
-  left_join(blocks %>% select(block_id, block_lat_dd, block_long_dd), by="block_id") %>% 
-  rename(lat_dd=block_lat_dd,
-         long_dd=block_long_dd) %>% 
-  # Format common name
-  mutate(comm_name=stringr::str_to_sentence(comm_name),
-         comm_name=recode(comm_name,
-                          "Anchovies" = "Northern anchovy",
-                          "M. squid" = "Market squid",
-                          "N. anchovies" = "Northern anchovy",
-                          "P. mackerel" = "Pacific mackerel",
-                          "Pa. Sardines" = "Pacific sardine")) %>% 
-  # Add species
-  mutate(species=recode(comm_name,
-                        "Jack mackerel" = "Trachurus symmetricus",       
-                        "Jacksmelt" = "Atherinopsis californiensis",   
-                        "Market squid" = "Doryteuthis opalescens",  
-                        "Northern anchovy" = "Engraulis mordax",  
-                        "Pacific mackerel" = "Scomber japonicus",   
-                        "Pacific sardine" = "Sardinops sagax")) %>% 
-  # Format toxicity
-  mutate(modifier=ifelse(grepl("<", toxicity_ppm), "<", "="),
-         toxicity_ppm=gsub("<", "", toxicity_ppm) %>% as.numeric(.)) %>% 
-  # Arrange
-  select(sample_id, date, 
-         block_id, lat_dd, long_dd,
-         comm_name, species, number_of_samples, modifier, toxicity_ppm, everything())
-
-# Inspect
-str(seafood)
-freeR::complete(seafood)
-
-# Inspect more
-range(seafood$date)
-table(seafood$block_id)
-table(seafood$comm_name)
-#freeR::check_names(seafood$species)
-
-# Export
-saveRDS(data, file=file.path(outdir, "CDPH_2025_finfish_domoic_data.Rds"))
-
-
-
- 

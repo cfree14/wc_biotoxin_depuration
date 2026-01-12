@@ -12,6 +12,7 @@ library(tidyverse)
 # Directories
 indir <- "data/washington/raw"
 outdir <- "data/washington/processed"
+intdir <- "data/washington/intermediate"
 
 # Read data
 data_orig <- readxl::read_excel(file.path(indir, "Biotoxin_Data_1957_to_September_2025.xlsx"), na="NULL", col_types = "text")
@@ -20,7 +21,7 @@ data_orig <- readxl::read_excel(file.path(indir, "Biotoxin_Data_1957_to_Septembe
 grid_orig <- readxl::read_excel(file.path(indir, "Grid_Codes_2025.xlsx"), na="Null")
 
 # Read species key
-spp_orig <- readxl::read_excel(file.path(indir, "WDOH_species_key.xlsx"))
+spp_orig <- readxl::read_excel(file.path(intdir, "WDOH_species_key.xlsx"))
 
 # Check species names
 # freeR::check_names(spp_orig$species)
@@ -117,11 +118,12 @@ data <- data_orig %>%
   left_join(spp_orig %>% select(comm_name, species), by="comm_name") %>% 
   # Update common names
   mutate(comm_name=recode(comm_name,
-                          "Bent nose clam"="Bent-nose macoma clam",
+                          "Bent nose clam"="Bent-nose clam",
                           "Cockle"="Nuttall's cockle",
                           "Abalone"="Pinto abalone",
                           "Varnish clam"="Purple varnish clam",
-                          "Kelp crab"="Northern kelp crab")) %>% 
+                          "Kelp crab"="Northern kelp crab",
+                          "Eastern softshell clam"="Softshell clam")) %>% 
   # Fix a CA site that incorrectly has a WA site id
   # mutate(site_id=ifelse(subsite=="2-CSR-PSP-NE50-  8/13/18" & !is.na(subsite), "USCA001", site_id),
   #        site=ifelse(subsite=="2-CSR-PSP-NE50-  8/13/18" & !is.na(subsite), "CSR-US-Pacific 100-000-1590", site),
@@ -174,6 +176,13 @@ data <- data_orig %>%
   mutate(monitoring_type=ifelse(is.na(monitoring_type), "Unknown", monitoring_type)) %>% 
   # Format tissue
   mutate_at(vars(da_tissue, dsp_tissue, psp_tissue), tolower) %>% 
+  # Fill tissues
+  mutate(da_tissue=ifelse(is.na(da_tissue), "not specified", da_tissue),
+         psp_tissue=ifelse(is.na(psp_tissue), "not specified", psp_tissue),
+         dsp_tissue=ifelse(is.na(dsp_tissue), "not specified", dsp_tissue)) %>% 
+  # Update common name for coastwide harmonization
+  mutate(comm_name=case_when(species=="Tresus capax" ~ "Fat gaper clam",
+                             T ~ comm_name)) %>% 
   # Arrange
   select(state, outer_yn, county, waterbody, site, subsite, site_id, lat_dd, long_dd,
          organization, cert_number, 

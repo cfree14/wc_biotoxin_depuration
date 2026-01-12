@@ -11,11 +11,14 @@ library(stringr)
 library(tidyverse)
 
 # Directories
-indir <- "data/california/raw_christina"
+indir <- "data/california/raw/fdb_christina"
 outdir <- "data/california/processed"
 
 # Read data
 data_orig <- readxl::read_excel(file.path(indir, "PRAR_DA_2000-2015.xlsx")) 
+
+# To do
+# DONE: Filling missing coordinates appears impossible
 
 # Format data
 ################################################################################
@@ -67,6 +70,6 @@ range(data$date)
 # Export data
 ################################################################################
 
-saveRDS(data, file=file.path(outdir, "CDPH_2000_2015_crab_domoic_data.Rds"))
+saveRDS(data, file=file.path(outdir, "CDPH_FDB_2000_2015_crab_domoic_data.Rds"))
 
  
