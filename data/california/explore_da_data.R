@@ -25,6 +25,21 @@ freeR::complete(data_orig)
 data <- data_orig 
 freeR::complete(data)
 
+data_plot <- data %>% 
+  filter(domoic_ppm>=20 & date>=ymd("2020-01-01"))
+
+ggplot(data_plot, aes(x=date, y=lat_dd, size=domoic_ppm, color=comm_name)) +
+  geom_point() +
+  # Labels
+  labs(x="Date", y="Latitude (°N)") +
+  scale_y_continuous(breaks=seq(32,50,2)) +
+  scale_x_date(breaks=seq(ymd("2020-01-01"), 
+                          ymd("2025-01-01"), by="1 years"),
+               date_label="%Y") +
+  
+  # Theme
+  theme_bw()
+
 
 # Table
 ################################################################################

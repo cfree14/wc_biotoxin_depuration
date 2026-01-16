@@ -52,6 +52,21 @@ stats1 <- data %>%
   ungroup()
 
 
+ggplot(stats, aes(x=toxicity_ug_100g_max, 
+                  y=reorder(comm_name, desc(toxicity_ug_100g_max)),
+                  fill=nyrs_above)) +
+  geom_bar(stat="identity") +
+  # Reference
+  geom_vline(xintercept=80) +
+  # Labels
+  labs(x="Max PSP toxicity (ug/100g)", y="") +
+  # Legend
+  scale_fill_gradientn(name="# of years", colors=RColorBrewer::brewer.pal(9, "Spectral") %>% rev()) +
+  guides(fill = guide_colorbar(ticks.colour = "black", frame.colour = "black", frame.linewidth = 0.2)) +
+  # Theme
+  theme_bw()
+
+
 # Investigate farmed sites
 ################################################################################
 
