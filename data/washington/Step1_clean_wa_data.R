@@ -184,12 +184,17 @@ data <- data_orig %>%
   mutate(comm_name=case_when(species=="Tresus capax" ~ "Fat gaper clam",
                              species=="Mytilus trossulus" ~ "Pacific blue mussel",
                              T ~ comm_name)) %>% 
+  # Add source (origin)
+  mutate(source=case_when(sample_type %in% c("Commercial", "Supplemental") ~ "cultured",
+                          sample_type %in% c("Program") ~ "sentinel", 
+                          sample_type %in% c("Monitoring", "Sport") ~ "wild",
+                          T ~ "unknown")) %>% 
   # Arrange
   select(state, outer_yn, county, waterbody, site, subsite, site_id, lat_dd, long_dd,
          organization, cert_number, 
          year_collected, month_collected, date_collected, 
          date_submitted, date_lab_received,
-         comm_name, species, sample_type, shell_shucked, fresh_frozen, monitoring_type,
+         comm_name, species, source, sample_type, shell_shucked, fresh_frozen, monitoring_type,
          da_id, da_date, da_tissue, da_modifier, da_result,
          psp_id, psp_date, psp_tissue, psp_modifier, psp_result,
          dsp_id, dsp_date, dsp_tissue, dsp_modifier, dsp_result,
@@ -231,10 +236,14 @@ freeR::which_duplicated(spp_key$comm_name)
 freeR::which_duplicated(spp_key$species)
 
 # Sample info
-table(data$sample_type)
 table(data$shell_shucked)
 table(data$fresh_frozen)
+
+# Monitoring type
+table(data$sample_type)
 table(data$monitoring_type)
+type_key <- data %>% 
+  count(sample_type, monitoring_type)
 
 # Tissues
 table(data$da_tissue)
