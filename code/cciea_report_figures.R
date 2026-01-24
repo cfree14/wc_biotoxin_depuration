@@ -76,7 +76,7 @@ g <- ggplot(data_da, aes(x=date, y=lat_dd, size=toxicity_ppm, fill=comm_name_use
   geom_vline(xintercept = lubridate::ymd("2025-01-01"), color="black", linetype="dotted") +
   # State lines
   geom_hline(yintercept=c(42, 46.27)) +
-  annotate(geom="text", x=lubridate::ymd("2020-01-01"), y=46.27,
+  annotate(geom="text", x=lubridate::ymd("2020-01-01"), y=49, #46.27,
            label="Washington", hjust=0, vjust=-0.7, size=2.2) +
   annotate(geom="text", x=lubridate::ymd("2020-01-01"), y=46.27,
            label="Oregon", hjust=0, vjust=1.5, size=2.2) +
@@ -138,14 +138,14 @@ g <- ggplot(data_psp, aes(x=date, y=lat_dd, size=toxicity_ug_100g, fill=comm_nam
   geom_vline(xintercept = lubridate::ymd("2025-01-01"), color="black", linetype="dotted") +
   # State lines
   geom_hline(yintercept=c(42, 46.27)) +
-  annotate(geom="text", x=lubridate::ymd("2020-01-01"), y=46.27,
+  annotate(geom="text", x=lubridate::ymd("2020-01-01"), y=49, #46.27,
            label="Washington", hjust=0, vjust=-0.7, size=2.2) +
   annotate(geom="text", x=lubridate::ymd("2020-01-01"), y=46.27,
            label="Oregon", hjust=0, vjust=1.5, size=2.2) +
   annotate(geom="text", x=lubridate::ymd("2020-01-01"), y=42,
            label="California", hjust=0, vjust=1.5, size=2.2) +
   # Labels
-  labs(x="Date", y="Latitude (°N)", title="Paralytic shellfish toxin tests above the 80 ug/100g action threshold") +
+  labs(x="Date", y="Latitude (°N)", title="Paralytic Shellfish Toxin tests above the 80 ug/100 g action threshold") +
   # Axis
   scale_y_continuous(breaks=seq(32,50, 2)) +
   scale_x_date(breaks=seq(ymd("2020-01-01"), 
@@ -153,7 +153,7 @@ g <- ggplot(data_psp, aes(x=date, y=lat_dd, size=toxicity_ug_100g, fill=comm_nam
                date_label="%Y") +
   # Legend
   scale_fill_manual(name="Species", values=RColorBrewer::brewer.pal(9, "Set1")) +
-  scale_size_continuous(name="Toxicity (ug/100g)") +
+  scale_size_continuous(name="Toxicity (ug/100 g)") +
   guides(fill = guide_legend(order = 1), size = guide_legend(order = 2)) +
   # Theme
   theme_bw() + base_theme +
@@ -195,7 +195,7 @@ g <- ggplot(data_dsp, aes(x=date, y=lat_dd, size=toxicity_ug_100g, fill=comm_nam
   # Year line
   geom_vline(xintercept = lubridate::ymd("2025-01-01"), color="black", linetype="dotted") +
   # Labels
-  labs(x="Date", y="Latitude (°N)", title="Diarrhetic shellfish toxin tests above the 16 ug/100g action threshold") +
+  labs(x="Date", y="Latitude (°N)", title="Diarrhetic Shellfish Toxin tests above the 16 ug/100 g action threshold") +
   # Axis
   scale_y_continuous(breaks=seq(32, 50, 0.5), lim=c(46.4, NA)) +
   scale_x_date(breaks=seq(ymd("2020-01-01"), 
@@ -203,7 +203,7 @@ g <- ggplot(data_dsp, aes(x=date, y=lat_dd, size=toxicity_ug_100g, fill=comm_nam
                date_label="%Y") +
   # Legend
   scale_fill_manual(name="Species", values=RColorBrewer::brewer.pal(2, "Set2")) +
-  scale_size_continuous(name="Toxicity (ug/100g)") +
+  scale_size_continuous(name="Toxicity (ug/100 g)") +
   guides(fill = guide_legend(order = 1), size = guide_legend(order = 2)) +
   # Theme
   theme_bw() + base_theme +
