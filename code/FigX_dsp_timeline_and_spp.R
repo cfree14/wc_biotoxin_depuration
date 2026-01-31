@@ -52,6 +52,7 @@ base_theme <- theme(axis.text=element_text(size=7),
                     # Legend
                     legend.key = element_rect(fill = NA, color=NA),
                     legend.background = element_rect(fill=alpha('blue', 0)))
+
 # Plot monitoring
 g1 <- ggplot(data_orig, aes(x=date, y=lat_dd, size=toxicity_ug_100g, color=comm_name)) +
   geom_point() +
