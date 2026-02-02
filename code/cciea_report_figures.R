@@ -12,7 +12,7 @@ library(tidyverse)
 # Directories
 outdir <- "data/merged/processed"
 tabledir <- "tables"
-plotdir <- "figures"
+plotdir <- "figures/cciea"
 
 # Read data
 data_da_orig <- readRDS(file=file.path(outdir, "WC_domoic_acid_data.Rds"))

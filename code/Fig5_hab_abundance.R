@@ -18,6 +18,7 @@ plotdir <- "figures"
 # Read data
 data_orig <- readRDS(file="/Users/cfree/Dropbox/Chris/UCSB/projects/domoic_closures/data/calhabmap/processed/calhabmap_data.Rds")
 
+
 # Build data
 ################################################################################
 
@@ -103,7 +104,7 @@ g <- ggplot(data, aes(x=date, y=reorder(location, lat_dd), fill=cells_l_max)) +
 g
 
 # Export
-ggsave(g, filename=file.path(plotdir, "FigSX_hab_species_abundance.png"), 
+ggsave(g, filename=file.path(plotdir, "Fig5_hab_species_abundance.png"), 
        width=6.5, height=4.5, units="in", dpi=600)
 
 
