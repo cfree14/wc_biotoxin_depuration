@@ -27,21 +27,23 @@ world <- rnaturalearth::ne_countries(country = c("Mexico", "Canada"), returnclas
 
 # Build data
 stats <- data_orig %>% 
+  # Count and max toxicity
   group_by(comm_name, species) %>% 
   summarize(n=n(),
             toxicity_ug_100g_max=max(toxicity_ug_100g, na.rm = T)) %>% 
   ungroup() %>% 
   # Remove unknown species
   filter(species!="Unknown spp.") %>% 
-  # Mark generic
+  # Mark generic species
   mutate(spp_yn=!grepl("spp", species) & !grepl("/", comm_name))  %>% 
-  # Record name use
-  mutate(comm_name_use1=ifelse(spp_yn==F | n<50, "Other", comm_name),
-         comm_name_use2=ifelse(spp_yn==F | n<50, NA, comm_name)) %>% 
   # Arrange
-  arrange(desc(n)) %>% 
-  mutate(comm_name_use1=factor(comm_name_use1, levels=unique(comm_name_use1)))
-levels(stats$comm_name_use1)
+  arrange(n) %>% 
+  mutate(comm_name=factor(comm_name, comm_name))
+
+# Common name order
+name_order <- levels(stats$comm_name)
+name_colors <- c(rep("grey80", 7), 
+                 RColorBrewer::brewer.pal(11, "Paired") %>% rev())
 
 # Sites
 sites <- data_orig %>% 
@@ -53,23 +55,28 @@ data <- data_orig %>%
   filter(species!="Unknown spp.") %>% 
   # Mark 
   mutate(action_yn=ifelse(toxicity_ug_100g>16, "yes", "no")) %>% 
-  # Add common name used for visualization
-  left_join(stats %>% select(comm_name, comm_name_use1, comm_name_use2), by=c("comm_name")) %>% 
-  # Order
-  mutate(comm_name_use1=factor(comm_name_use1, levels=levels(stats$comm_name_use1))) %>% 
-  arrange(comm_name_use1, date)
-
+  # Order species
+  mutate(comm_name=factor(comm_name, name_order)) %>% 
+  # Arrange
+  # desc(comm_name) puts most abundant on bottom
+  arrange(desc(comm_name), date)
+  
+# Pull out low / high values
 data_lo <- data %>% 
   filter(action_yn=="no")
 data_hi <- data %>% 
   filter(action_yn=="yes")
 
-# Toxicity stats
+# Annual max toxicity stats
 max_yr <- data %>% 
+  # Remove NAs
   filter(!is.na(toxicity_ug_100g)) %>% 
-  group_by(comm_name, comm_name_use1, comm_name_use2, year) %>% 
+  # Annual max toxicity
+  group_by(comm_name, year) %>% 
   summarize(toxicity_ug_100g_max=max(toxicity_ug_100g, na.rm=T)) %>% 
-  ungroup()
+  ungroup() %>% 
+  # Order common name
+  mutate(comm_name=factor(comm_name, name_order))
 
 
 # Plot figure
@@ -119,12 +126,12 @@ g2 <- ggplot() +
   # Below 
   geom_point(data_lo, mapping=aes(x=date, 
                        y=lat_dd,
-                       color=comm_name_use2), alpha=0.2, size=0.7, pch=16) +
+                       color=comm_name), alpha=0.2, size=0.7, pch=16) +
   # Above
   geom_point(data_hi, mapping=aes(x=date, 
                                y=lat_dd,
                                size=toxicity_ug_100g, 
-                               color=comm_name_use2), pch=16) +
+                               color=comm_name), pch=16) +
   # Labels
   labs(x="Date", y="Latitude (°N)", tag="B") +
   # Y-axis
@@ -138,6 +145,7 @@ g2 <- ggplot() +
                date_label="%Y") +
   # Legend
   # scale_alpha_discrete() +
+  scale_color_manual(values=name_colors) +
   scale_shape_manual(values=c(4, 16)) +
   # Theme
   theme_bw() + base_theme +
@@ -148,9 +156,9 @@ g2
 
 # Plot species toxicity
 g3 <- ggplot(max_yr, aes(x=toxicity_ug_100g_max,
-                        y=reorder(comm_name, comm_name_use1),
-                        fill=comm_name_use1)) +
-  geom_violin(color=NA, alpha=0.6) +
+                        y=comm_name,
+                        fill=comm_name)) +
+  geom_violin(color=NA, alpha=0.6, drop=F) +
   geom_point(pch=21, size=2) +
   # Reference line
   geom_vline(xintercept=16) +
@@ -158,7 +166,7 @@ g3 <- ggplot(max_yr, aes(x=toxicity_ug_100g_max,
   labs(x="Annual max toxicity (ug/100g)", y="", tag="C") +
   scale_x_continuous(trans="log10") +
   # Legend
-  scale_fill_discrete(na.value = "grey80") +
+  scale_fill_manual(values=name_colors) + 
   # Theme
   theme_bw() + base_theme +
   theme(legend.position = "none",
@@ -172,14 +180,14 @@ g3
 
 # Plot species sample size
 g4 <- ggplot(stats, aes(x=n, 
-                        y=reorder(comm_name, n),
-                        fill=comm_name_use2)) +
+                        y=comm_name,
+                        fill=comm_name)) + #comm_name_use2
   geom_col() +
   # Labels
   labs(x="Number of tests", y="", tag="D") +
   scale_x_continuous(trans="log10") +
   # Legend
-  scale_fill_discrete(na.value = "grey80") +
+  scale_fill_manual(values=name_colors) + 
   # Theme
   theme_bw() + base_theme +
   theme(legend.position = "none",
@@ -201,7 +209,7 @@ g <- gridExtra::grid.arrange(g1, g2, g3, g4,
                              widths=c(0.44, 0.56))
 
 # Export
-ggsave(g, filename=file.path(plotdir, "FigX_dsp_map_timeline_65.png"), 
+ggsave(g, filename=file.path(plotdir, "FigX_dsp_map_timeline_spp.png"), 
        width=6.5, height=6.5, units="in", dpi=600, bg="white")
 
 
