@@ -151,7 +151,7 @@ g2 <- ggplot() +
                      expand=F) +
   # X-axis
   scale_x_date(breaks=seq(ymd("1960-01-01"), 
-                          ymd("2025-01-01"), by="5 years"),
+                          ymd("2030-01-01"), by="10 years"),
                date_label="%Y") +
   # Legend
   # scale_alpha_discrete() +
