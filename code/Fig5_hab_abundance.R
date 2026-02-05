@@ -18,7 +18,6 @@ plotdir <- "figures"
 # Read data
 data_orig <- readRDS(file="/Users/cfree/Dropbox/Chris/UCSB/projects/domoic_closures/data/calhabmap/processed/calhabmap_data.Rds")
 
-
 # Build data
 ################################################################################
 
@@ -43,11 +42,13 @@ data <- data_orig %>%
   mutate(month=lubridate::month(date)) %>% 
   # Summarize by month
   filter(!is.na(cells_l)) %>% 
-  group_by(hab_species, year, month, location, lat_dd) %>% 
+  group_by(hab_species, year, month, location, location_code, lat_dd) %>% 
   summarize(cells_l_max=max(cells_l)) %>% 
   ungroup() %>% 
   # Build date
   mutate(date=paste(year, month, 1, sep="-") %>% lubridate::ymd()) %>% 
+  # Format location code
+  mutate(location_code=gsub("HAB_", "", location_code)) %>% 
   # Format HAB species
   mutate(hab_species=recode(hab_species,
                             "alexandrium__cells_l" = "Alexandrium spp.",                 
@@ -60,17 +61,22 @@ data <- data_orig %>%
 str(data)
 sort(unique(data$hab_species))
 
+# Sites
+sites <- data_orig %>% 
+  count(location, location_code, lat_dd, long_dd)
+
 # Plot data
 ################################################################################
 
 # Theme
 my_theme <-  theme(axis.text=element_text(size=7),
-                   axis.text.x = element_text(angle = 45, vjust = 1, hjust=1),
                    axis.title=element_text(size=7),
+                   axis.title.y=element_blank(),
                    legend.text=element_text(size=7),
                    legend.title=element_text(size=8),
                    strip.text=element_text(size=7),
                    plot.title=element_text(size=8),
+                   plot.tag=element_text(size=8),
                    # Gridlines
                    panel.grid.major = element_blank(), 
                    panel.grid.minor = element_blank(),
@@ -80,12 +86,34 @@ my_theme <-  theme(axis.text=element_text(size=7),
                    legend.key = element_rect(fill = NA, color=NA),
                    legend.background = element_rect(fill=alpha('blue', 0)))
 
+
+# Get land
+usa <- rnaturalearth::ne_states(country="United States of America", returnclass = "sf")
+world <- rnaturalearth::ne_countries(country = c("Mexico", "Canada"), returnclass = "sf", scale="large")
+
+# Plot sites
+g1 <- ggplot() +
+  # Plot land
+  geom_sf(data=world, fill="grey80", color="white", lwd=0.2, inherit.aes = F) +
+  geom_sf(data=usa, fill="grey80", color="white", lwd=0.2, inherit.aes = F) +
+  # Plot sites
+  geom_point(sites, mapping=aes(x=long_dd, y=lat_dd)) +
+  # Labels
+  labs(x="", y="", tag="A") +
+  scale_y_continuous(breaks=seq(32,50,2)) +
+  # Crop
+  coord_sf(xlim=c(-117, -125), ylim=c(33, 49)) +
+  # Theme
+  theme_bw() + my_theme +
+  theme(axis.text.y = element_text(angle = 90, hjust = 0.5))
+g1 
+  
 # Plot data
-g <- ggplot(data, aes(x=date, y=reorder(location, lat_dd), fill=cells_l_max)) +
-  facet_wrap(~hab_species) +
+g2 <- ggplot(data, aes(x=date, y=reorder(location_code, lat_dd), fill=cells_l_max)) +
+  facet_wrap(~hab_species, ncol=2) +
   geom_tile() +
   # Labels
-  labs(x="Month", y="") +
+  labs(x="Month", y="", tag="B") +
   # Axes
   scale_x_date(breaks=seq(ymd("1995-01-01"), 
                           ymd("2026-01-01"), by="5 years"),
@@ -100,12 +128,15 @@ g <- ggplot(data, aes(x=date, y=reorder(location, lat_dd), fill=cells_l_max)) +
   guides(fill = guide_colorbar(ticks.colour = "black", frame.colour = "black", frame.linewidth = 0.2)) +
   # Theme
   theme_bw() + my_theme +
-  theme(legend.position = c(0.8, 0.2))
-g
+  theme(legend.position = c(0.8, 0.1),)
+g2
+
+# Merge
+g <- gridExtra::grid.arrange(g1, g2, nrow=1, widths=c(0.41, 0.59))
 
 # Export
 ggsave(g, filename=file.path(plotdir, "Fig5_hab_species_abundance.png"), 
-       width=6.5, height=4.5, units="in", dpi=600)
+       width=6.5, height=6.5, units="in", dpi=600)
 
 
 
