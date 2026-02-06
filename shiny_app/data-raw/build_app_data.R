@@ -26,7 +26,7 @@ asp_orig <- readRDS(file=file.path(outdir, "WC_domoic_acid_data.Rds"))
 # Prep DA
 asp <- asp_orig %>% 
   # Add
-  mutate(toxin="AST") %>% 
+  mutate(toxin="Domoic acid") %>% 
   # Rename
   rename(toxicity=toxicity_ppm) %>% 
   # Reduce
@@ -35,7 +35,7 @@ asp <- asp_orig %>%
 # Prep PSP
 psp <- psp_orig %>% 
   # Add
-  mutate(toxin="PST") %>% 
+  mutate(toxin="Paralytic shellfish toxin") %>% 
   # Rename
   rename(toxicity=toxicity_ug_100g) %>% 
   # Reduce
@@ -44,7 +44,7 @@ psp <- psp_orig %>%
 # Prep DSP
 dsp <- dsp_orig %>% 
   # Add
-  mutate(toxin="DST") %>% 
+  mutate(toxin="Diarrhetic shellfish toxin") %>% 
   # Rename
   rename(toxicity=toxicity_ug_100g) %>% 
   # Reduce

@@ -31,8 +31,8 @@ ui <- fluidPage(
       selectInput(
         inputId = "toxin",
         label   = "Toxin",
-        choices = c("PST", "DST", "AST"),
-        selected = "PST"
+        choices = c("Domoic acid", "Paralytic shellfish toxin", "Diarrhetic shellfish toxin"),
+        selected = "Domoic acid"
       ),
       
       # Species selector
@@ -205,13 +205,18 @@ server <- function(input, output, session) {
     
     # Plot data
     ggplot(df, aes(x = date, y = lat_dd, size = toxicity, fill = toxicity)) +
+      # State lines
+      geom_hline(yintercept=c(42, 45, 49)) +
+      # Points
       geom_point(pch = 21, stroke = 0.1, alpha = 0.85) +
+      # Labels
       labs(x = "Date", y = "Latitude (°N)") +
+      # Latitude axis
       scale_y_continuous(breaks = seq(32, 
                                       50, 
                                       lat_step),
                          lim=c(input$lat_range[1], input$lat_range[2])) +
-      # Use the *selected* year range to set breaks (optional but nicer)
+      # Date axis
       scale_x_date(
         lim=c( as.Date(paste0(input$year[1], "-01-01")),
                as.Date(paste0(input$year[2], "-01-01"))),
@@ -222,6 +227,7 @@ server <- function(input, output, session) {
         ),
         date_labels = "%Y"
       ) +
+      # Legends
       scale_size_continuous(name = "Toxicity") +
       scale_fill_gradientn(
         name = "Toxicity",
@@ -232,11 +238,14 @@ server <- function(input, output, session) {
         frame.colour = "black",
         frame.linewidth = 0.2
       )) +
+      # Theme
       theme_bw() +
-      theme(axis.text=element_text(size=11),
-            axis.title=element_text(size=12),
-            legend.text=element_text(size=11),
-            legend.title=element_text(size=12),)
+      theme(axis.text=element_text(size=12),
+            axis.title=element_text(size=13),
+            legend.text=element_text(size=12),
+            legend.title=element_text(size=13),
+            panel.grid.major = element_blank(), 
+            panel.grid.minor = element_blank())
     
   })
   
