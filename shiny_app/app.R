@@ -64,6 +64,19 @@ ui <- fluidPage(
         step    = 0.1
       ),
       
+      # Zoom in/out buttons
+      fluidRow(
+        column(
+          6,
+          actionButton("zoom_data", "Zoom to data", width = "100%")
+        ),
+        column(
+          6,
+          actionButton("zoom_full", "Zoom out", width = "100%")
+        )
+      ),
+      br(),
+      
       # Helper text
       helpText("Points are filtered by toxin, species, date range, and latitude range.")
       
@@ -168,7 +181,50 @@ server <- function(input, output, session) {
       )
   })
   
-  # 3) Plot
+  # Compute data extent for toxin-species
+  extent_ts <- reactive({
+    req(input$toxin, input$species)
+    
+    df_ts <- data_orig %>%
+      filter(toxin == input$toxin, comm_name == input$species) %>%
+      filter(!is.na(date), !is.na(lat_dd))
+    
+    if (nrow(df_ts) == 0) return(NULL)
+    
+    list(
+      year_min = min(df_ts$year, na.rm = TRUE),
+      year_max = max(df_ts$year, na.rm = TRUE),
+      lat_min  = min(df_ts$lat_dd, na.rm = TRUE),
+      lat_max  = max(df_ts$lat_dd, na.rm = TRUE)
+    )
+  })
+  
+  # Zoom to toxin-species data extent
+  observeEvent(input$zoom_data, {
+    ex <- extent_ts()
+    req(ex)
+    
+    # Optional padding so points aren't right on the boundary
+    pad_year <- 0      # change to 1 if you want a 1-year pad
+    pad_lat  <- 0.2
+    
+    yr_min <- max(1960, floor(ex$year_min - pad_year))
+    yr_max <- min(2026, ceiling(ex$year_max + pad_year))
+    
+    lat_min <- max(32, ex$lat_min - pad_lat)
+    lat_max <- min(50, ex$lat_max + pad_lat)
+    
+    updateSliderInput(session, "year", value = c(yr_min, yr_max))
+    updateSliderInput(session, "lat_range", value = c(lat_min, lat_max))
+  })
+  
+  # Zoom out to full extent
+  observeEvent(input$zoom_full, {
+    updateSliderInput(session, "year", value = c(1960, 2026))
+    updateSliderInput(session, "lat_range", value = c(32, 50))
+  })
+  
+  # Plot the data
   output$obs_plot <- renderPlot({
     
     # Filter data
@@ -203,9 +259,18 @@ server <- function(input, output, session) {
     lat_span <- lat_max - lat_min
     lat_step <- lat_break_step(lat_span)
     
+    # Toxicity title
+    tox_title <- ifelse(input$toxin=="Domoic acid", "Toxicity (ppm)", "Toxicity (ug/100g)")
+    
     # Plot data
     ggplot(df, aes(x = date, y = lat_dd, size = toxicity, fill = toxicity)) +
       # State lines
+      annotate(geom="text", 
+               x=as.Date(paste0(input$year[1], "-01-01")),
+               y=c(42, 45, 49),
+               label=c("California", "Oregon", "Washington"),
+               hjust=0,
+               vjust=1.5) +
       geom_hline(yintercept=c(42, 45, 49)) +
       # Points
       geom_point(pch = 21, stroke = 0.1, alpha = 0.85) +
@@ -228,9 +293,9 @@ server <- function(input, output, session) {
         date_labels = "%Y"
       ) +
       # Legends
-      scale_size_continuous(name = "Toxicity") +
+      scale_size_continuous(name =  tox_title) +
       scale_fill_gradientn(
-        name = "Toxicity",
+        name =  tox_title,
         colors = RColorBrewer::brewer.pal(9, "Spectral") %>% rev()
       ) +
       guides(fill = guide_colorbar(
