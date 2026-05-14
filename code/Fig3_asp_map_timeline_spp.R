@@ -22,6 +22,17 @@ usa <- rnaturalearth::ne_states(country="United States of America", returnclass 
 world <- rnaturalearth::ne_countries(country = c("Mexico", "Canada"), returnclass = "sf", scale="large")
 
 
+# Morpho proposal stats
+################################################################################
+
+data_orig %>% 
+  group_by(state) %>% 
+  summarize(nspp=n_distinct(comm_name),
+            year1=min(year, na.rm=T),
+            year2=max(year, na.rm=T))
+
+
+
 # Build data
 ################################################################################
 

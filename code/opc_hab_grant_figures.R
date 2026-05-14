@@ -15,11 +15,14 @@ tabledir <- "tables"
 plotdir <- "figures"
 
 # Read data
-data_orig <- readRDS(file=file.path(outdir, "WC_dsp_data.Rds"))
+da_orig <- readRDS(file=file.path(outdir, "WC_domoic_acid_data.Rds"))
+pst_orig <- readRDS(file=file.path(outdir, "WC_psp_data.Rds"))
+
 
 # Get land
 usa <- rnaturalearth::ne_states(country="United States of America", returnclass = "sf")
 world <- rnaturalearth::ne_countries(country = c("Mexico", "Canada"), returnclass = "sf", scale="large")
+
 
 # Morpho proposal stats
 ################################################################################
@@ -35,58 +38,23 @@ data_orig %>%
 # Build data
 ################################################################################
 
-# Build data
-stats <- data_orig %>% 
-  # Count and max toxicity
-  group_by(comm_name, species) %>% 
-  summarize(n=n(),
-            toxicity_ug_100g_max=max(toxicity_ug_100g, na.rm = T)) %>% 
-  ungroup() %>% 
-  # Remove unknown species
-  filter(species!="Unknown spp.") %>% 
-  # Mark generic species
-  mutate(spp_yn=!grepl("spp", species) & !grepl("/", comm_name))  %>% 
-  # Arrange
-  arrange(n) %>% 
-  mutate(comm_name=factor(comm_name, comm_name))
+# DA
+da <- da_orig %>% 
+  # Add
+  mutate(toxin="Domoic acid") %>% 
+  # Simplify
+  select(toxin, date, comm_name, lat_dd, long_dd, toxicity_ppm) %>% 
+  na.omit()
 
-# Common name order
-name_order <- levels(stats$comm_name)
-name_colors <- c(rep("grey80", 7), 
-                 RColorBrewer::brewer.pal(11, "Paired") %>% rev())
+# DA
+pst <- pst_orig %>% 
+  # Add
+  mutate(toxin="Paralytic shellfish toxin") %>% 
+  # Simplify
+  select(toxin, date, comm_name, lat_dd, long_dd, toxicity_ug_100g) %>% 
+  na.omit()
 
-# Sites
-sites <- data_orig %>% 
-  count(lat_dd, long_dd)
 
-# Format data
-data <- data_orig %>% 
-  # Remove 
-  filter(species!="Unknown spp.") %>% 
-  # Mark 
-  mutate(action_yn=ifelse(toxicity_ug_100g>16, "yes", "no")) %>% 
-  # Order species
-  mutate(comm_name=factor(comm_name, name_order)) %>% 
-  # Arrange
-  # desc(comm_name) puts most abundant on bottom
-  arrange(desc(comm_name), date)
-  
-# Pull out low / high values
-data_lo <- data %>% 
-  filter(action_yn=="no")
-data_hi <- data %>% 
-  filter(action_yn=="yes")
-
-# Annual max toxicity stats
-max_yr <- data %>% 
-  # Remove NAs
-  filter(!is.na(toxicity_ug_100g)) %>% 
-  # Annual max toxicity
-  group_by(comm_name, year) %>% 
-  summarize(toxicity_ug_100g_max=max(toxicity_ug_100g, na.rm=T)) %>% 
-  ungroup() %>% 
-  # Order common name
-  mutate(comm_name=factor(comm_name, name_order))
 
 
 # Plot figure
@@ -114,15 +82,13 @@ g1 <- ggplot() +
   # Plot land
   geom_sf(data=world, fill="grey90", color="white", lwd=0.3, inherit.aes = F) +
   geom_sf(data=usa, fill="grey90", color="white", lwd=0.3, inherit.aes = F) +
-  # Plot sites
-  geom_point(data=sites, aes(x=long_dd, y=lat_dd), size=1.1, pch=21, fill="skyblue", stroke=0.3) +
   # Labels
   labs(x="", y="", tag="A") +
   # Axis
-  scale_y_continuous(breaks=seq(46, 50, 0.5)) +
+  scale_y_continuous(breaks=seq(32, 50, 2)) +
   # Crop
-  coord_sf(xlim=c(-124.9, -122.1), 
-           ylim=c(46.2, 49.1), 
+  coord_sf(xlim=c(-125.3, -116.5), 
+           ylim=c(32.1, 49.1), 
            expand=F) +
   # Theme
   theme_bw() + base_theme +
@@ -130,8 +96,7 @@ g1 <- ggplot() +
         axis.title.y=element_blank())
 g1
 
-# Plot monitoring
-range(data$lat_dd, na.rm=T)
+# Plot DA
 g2 <- ggplot() +
   # Below 
   geom_point(data_lo, mapping=aes(x=date, 
@@ -140,18 +105,18 @@ g2 <- ggplot() +
   # Above
   geom_point(data_hi, mapping=aes(x=date, 
                                y=lat_dd,
-                               size=toxicity_ug_100g, 
+                               size=toxicity_ppm, 
                                color=comm_name), pch=16) +
   # Labels
   labs(x="Date", y="Latitude (°N)", tag="B") +
   # Y-axis
-  scale_y_continuous(breaks=seq(46, 50, 0.5), 
-                     labels=paste0(seq(46, 50, 0.5), "°N"),
-                     lim=c(46.2, 49.1),
+  scale_y_continuous(breaks=seq(32, 50, 2), 
+                     labels=paste0(seq(32, 50, 2), "°N"),
+                     lim=c(32.1, 49.1),
                      expand=F) +
   # X-axis
-  scale_x_date(breaks=seq(ymd("2010-01-01"), 
-                          ymd("2025-01-01"), by="2 years"),
+  scale_x_date(breaks=seq(ymd("1990-01-01"), 
+                          ymd("2025-01-01"), by="5 years"),
                date_label="%Y") +
   # Legend
   # scale_alpha_discrete() +
@@ -165,15 +130,15 @@ g2 <- ggplot() +
 g2
 
 # Plot species toxicity
-g3 <- ggplot(max_yr, aes(x=toxicity_ug_100g_max,
+g3 <- ggplot(max_yr, aes(x=toxicity_ppm_max,
                         y=comm_name,
                         fill=comm_name)) +
   geom_violin(color=NA, alpha=0.6, drop=F) +
   geom_point(pch=21, size=2) +
   # Reference line
-  geom_vline(xintercept=16) +
+  geom_vline(xintercept=20) +
   # Labels
-  labs(x="Annual max toxicity (ug/100g)", y="", tag="C") +
+  labs(x="Annual max toxicity (ppm)", y="", tag="C") +
   scale_x_continuous(trans="log10") +
   # Legend
   scale_fill_manual(values=name_colors) + 
@@ -216,11 +181,11 @@ layout_matrix <- matrix(data=c(1, 2,
 g <- gridExtra::grid.arrange(g1, g2, g3, g4,
                              layout_matrix=layout_matrix,
                              heights=c(0.66, 0.34),
-                             widths=c(0.44, 0.56))
+                             widths=c(0.4, 0.6))
 
 # Export
-ggsave(g, filename=file.path(plotdir, "Fig4_dsp_map_timeline_spp.png"), 
-       width=6.5, height=6.5, units="in", dpi=600, bg="white")
+ggsave(g, filename=file.path(plotdir, "Fig3_asp_map_timeline_spp.png"), 
+       width=6.5, height=8.5, units="in", dpi=600, bg="white")
 
 
 
