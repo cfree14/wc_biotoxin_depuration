@@ -78,7 +78,7 @@ ui <- fluidPage(
       br(),
       
       # Helper text
-      helpText("Points are filtered by toxin, species, date range, and latitude range.")
+      helpText("Grey points represent tests below the action level.")
       
     ),
     
@@ -87,6 +87,18 @@ ui <- fluidPage(
       
       # Plot graphic
       plotOutput("obs_plot", height = "500px", width="700px"),
+      
+      # Citation
+      h3("How to cite"), 
+      p(
+        "Free CM, Moore SK, Trainer VL (2022) ",
+        a("The value of monitoring in efficiently and adaptively managing biotoxin contamination in marine fisheries.",
+          href = "https://www.sciencedirect.com/science/article/pii/S1568988322000543",
+          target = "_blank"
+        ),
+        em(" Harmful Algae"),
+        " 114: 102226."
+      )
       
     )
     
@@ -134,7 +146,7 @@ server <- function(input, output, session) {
     
     choices_named <- setNames(
       sp$comm_name,
-      paste0(sp$comm_name, " (n=", format(sp$n, big.mark = ","), ")")
+      paste0(sp$comm_name, " (n =", format(sp$n, big.mark = ","), ")")
     )
     
     updateSelectInput(
@@ -260,20 +272,39 @@ server <- function(input, output, session) {
     lat_step <- lat_break_step(lat_span)
     
     # Toxicity title
-    tox_title <- ifelse(input$toxin=="Domoic acid", "Toxicity (ppm)", "Toxicity (ug/100g)")
+    # tox_title <- ifelse(input$toxin=="Domoic acid", "Toxicity (ppm)", "Toxicity (ug/100g)")
+    tox_title <- case_when(input$toxin=="Domoic acid" ~ "Toxicity (ppm)\n20 ppm action level",
+                           input$toxin=="Paralytic shellfish toxin" ~ "Toxicity (ug/100g)\n80 ug/100g action level",
+                           input$toxin=="Diarrhetic shellfish toxin" ~ "Toxicity (ug/100g)\n16 ug/100g action level",
+                           T ~ NA)
+    
+    # Action level
+    action_level <- case_when(input$toxin=="Domoic acid" ~ 20,
+                              input$toxin=="Paralytic shellfish toxin" ~ 80,
+                              input$toxin=="Diarrhetic shellfish toxin" ~ 16,
+                              T ~ NA)
+    
+    # Build two levels of data
+    df_lo <- df %>% 
+      filter(toxicity < action_level)
+    df_hi <- df %>% 
+      filter(toxicity >= action_level)
     
     # Plot data
-    ggplot(df, aes(x = date, y = lat_dd, size = toxicity, fill = toxicity)) +
+    ggplot(df_hi, aes(x = date, y = lat_dd, size = toxicity, fill = toxicity)) +
       # State lines
+      geom_hline(yintercept=c(42, 45, 49)) +
+      # Low values
+      geom_point(data=df_lo, mapping=aes(x=date, y=lat_dd), color="grey80", pch=20, inherit.aes = F, size=1) +
+      # High values
+      geom_point(pch = 21, stroke = 0.1, alpha = 0.85) +
+      # State labels
       annotate(geom="text", 
                x=as.Date(paste0(input$year[1], "-01-01")),
                y=c(42, 45, 49),
                label=c("California", "Oregon", "Washington"),
                hjust=0,
                vjust=1.5) +
-      geom_hline(yintercept=c(42, 45, 49)) +
-      # Points
-      geom_point(pch = 21, stroke = 0.1, alpha = 0.85) +
       # Labels
       labs(x = "Date", y = "Latitude (°N)") +
       # Latitude axis
