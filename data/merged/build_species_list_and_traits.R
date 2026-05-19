@@ -13,66 +13,136 @@ library(tidyverse)
 outdir <- "data/merged/processed"
 tabledir <- "tables"
 plotdir <- "figures"
+keydir <- "data/merged/species_key"
+
 
 # Read data
-data_psp <- readRDS(file=file.path(outdir, "WC_psp_data.Rds"))
-data_asp <- readRDS(file=file.path(outdir, "WC_domoic_acid_data.Rds"))
-data_dsp <- readRDS(file=file.path(outdir, "WC_dsp_data.Rds"))
+data_psp_orig <- readRDS(file=file.path(outdir, "WC_psp_data.Rds"))
+data_asp_orig <- readRDS(file=file.path(outdir, "WC_domoic_acid_data.Rds"))
+data_dsp_orig <- readRDS(file=file.path(outdir, "WC_dsp_data.Rds"))
 
 
-# Build and merge keys
+# Merge data to help build key
 ################################################################################
 
-# PSP stats
-spp_psp <- data_psp %>% 
-  group_by(comm_name, species) %>% 
-  summarize(n=n()) %>% 
-  ungroup()
+# PST
+data_psp <- data_psp_orig %>% 
+  # Add toxin
+  mutate(toxin="PST") %>% 
+  # Simplify
+  select(toxin, state, comm_name, species, source_use)
 
-# ASP stats
-spp_asp <- data_asp %>% 
-  group_by(comm_name, species) %>% 
-  summarize(n=n()) %>% 
-  ungroup()
+# Domoic
+data_da <- data_asp_orig %>% 
+  # Add toxin
+  mutate(toxin="DA") %>% 
+  # Simplify
+  select(toxin, state, comm_name, species, source_use)
 
-# DSP stats
-spp_dsp <- data_dsp %>% 
-  group_by(comm_name, species) %>% 
-  summarize(n=n()) %>% 
-  ungroup()
+# DST
+data_dsp <- data_dsp_orig %>% 
+  # Add toxin
+  mutate(toxin="DST") %>% 
+  # Simplify
+  select(toxin, state, comm_name, species, source_use)
 
 # Merge
-spp_key <- bind_rows(spp_psp, spp_asp, spp_dsp) %>% 
-  select(comm_name, species) %>% 
-  unique()
+data <- bind_rows(data_psp, data_da, data_dsp)
 
-# Check
-freeR::which_duplicated(spp_key$comm_name)
-freeR::which_duplicated(spp_key$species)
 
-# Look up lat/long
-df <- freeR::fishbase(dataset="species", species=spp_key$species, cleaned=F)
-colnames(df)
-# df1 <- df %>%
-
-df <- rfishbase::distribution(spp_key$species)
-df1 <- df %>% 
-  # Simplify
-  select(Species, SouthernLatitude, SouthernLatitudeNS, NorthernLatitude, NorthernLatitudeNS) %>% 
-  filter(!is.na(SouthernLatitude)) %>% 
-  # Rename
-  rename(species=Species,
-         lat_dd_s=SouthernLatitude,
-         lat_dd_n=NorthernLatitude)
-  
-
-# Look up species
+# Summarize into species key
 ################################################################################
 
-# Species
-scinames <- spp_key$species
+# Build key
+key <- data %>% 
+  # Abbreviate states pre-summary
+  mutate(state=recode(state,
+                      "California" = "CA",
+                      "Oregon" = "OR",
+                      "Washington" = "WA")) %>% 
+  # Summarize
+  group_by(comm_name, species) %>% 
+  summarize(n=n(), 
+            toxins=paste(unique(toxin), collapse=", "),
+            states=paste(unique(state), collapse=", "),
+            sources=paste(unique(source_use[source_use!="not specified"]), collapse=", ")) %>% 
+  ungroup() %>% 
+  # Remove blank species
+  filter(!is.na(comm_name))
+
+# Export
+write.csv(key, file=file.path(keydir, "species_key1.csv"))
 
 
-
-
-
+# Get lat range info
+################################################################################
+# 
+# # Species
+# spp_do <- key$species
+# 
+# # Retrieve FB info
+# fb <- rfishbase::distribution(spp_do)
+# 
+# # Format FB info
+# fb1 <- fb %>% 
+#   # Simplify
+#   select(Species, SouthernLatitude, SouthernLatitudeNS, NorthernLatitude, NorthernLatitudeNS) %>% 
+#   filter(!is.na(SouthernLatitude)) %>% 
+#   # Rename
+#   rename(species=Species) %>% 
+#   # Add
+#   mutate(lat_dd_s=ifelse(SouthernLatitudeNS=="S", SouthernLatitude*-1, SouthernLatitude),
+#          lat_dd_n=ifelse(NorthernLatitudeNS=="S", NorthernLatitude*-1, NorthernLatitude)) %>% 
+#   # Summarize
+#   group_by(species) %>% 
+#   summarize(lat_dd_s=min(lat_dd_s),
+#             lat_dd_n=max(lat_dd_n)) %>% 
+#   ungroup()
+# 
+# # Retrieve SLB info
+# slb <- rfishbase::distribution(spp_do, server="sealifebase")
+# 
+# # Format FB info
+# slb1 <- slb %>% 
+#   # Simplify
+#   select(Species, SouthernLatitude, SouthernLatitudeNS, NorthernLatitude, NorthernLatitudeNS) %>% 
+#   filter(!is.na(SouthernLatitude)) %>% 
+#   # Rename
+#   rename(species=Species) %>% 
+#   # Add
+#   mutate(lat_dd_s=ifelse(SouthernLatitudeNS=="S", SouthernLatitude*-1, SouthernLatitude),
+#          lat_dd_n=ifelse(NorthernLatitudeNS=="S", NorthernLatitude*-1, NorthernLatitude)) %>% 
+#   # Summarize
+#   group_by(species) %>% 
+#   summarize(lat_dd_s=min(lat_dd_s),
+#             lat_dd_n=max(lat_dd_n)) %>% 
+#   ungroup()
+# 
+# # Merge
+# lats <- bind_rows(fb1, slb1)
+# 
+# # Add to key
+# data <- spp_key %>% 
+#   left_join(lats)
+# 
+# ggplot(data, aes(x=lat_dd_s, xend=lat_dd_n, y=reorder(comm_name, lat_dd_n))) +
+#   geom_segment() +
+#   # Ref lines
+#   geom_vline(xintercept=c(32, 42, 46, 50)) +
+#   # Labels
+#   labs(x="Latitude (°N)", y="") +
+#   # Theme
+#   theme_bw()
+# 
+# write.csv(spp_key, file = "~/Desktop/key.csv")
+# 
+# # Look up species
+# ################################################################################
+# 
+# # Species
+# scinames <- spp_key$species
+# 
+# 
+# 
+# 
+# 
