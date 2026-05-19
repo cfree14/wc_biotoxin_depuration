@@ -50,6 +50,21 @@ spp_key <- bind_rows(spp_psp, spp_asp, spp_dsp) %>%
 freeR::which_duplicated(spp_key$comm_name)
 freeR::which_duplicated(spp_key$species)
 
+# Look up lat/long
+df <- freeR::fishbase(dataset="species", species=spp_key$species, cleaned=F)
+colnames(df)
+# df1 <- df %>%
+
+df <- rfishbase::distribution(spp_key$species)
+df1 <- df %>% 
+  # Simplify
+  select(Species, SouthernLatitude, SouthernLatitudeNS, NorthernLatitude, NorthernLatitudeNS) %>% 
+  filter(!is.na(SouthernLatitude)) %>% 
+  # Rename
+  rename(species=Species,
+         lat_dd_s=SouthernLatitude,
+         lat_dd_n=NorthernLatitude)
+  
 
 # Look up species
 ################################################################################
