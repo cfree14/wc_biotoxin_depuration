@@ -57,6 +57,35 @@ blocks <- blocks_orig %>%
   filter(block_type!="Offshore")
 
 
+# Build rock crab closures
+################################################################################
+
+# Read closure data
+closures_df <- readxl::read_excel("data/closures/data/rock_crab_closures.xlsx") %>% 
+  filter(action=="open")
+
+# Build data
+date1 <- min(closures_df$date)
+date2 <- max(closures_df$date)
+dates <- seq(date1, date2, "1 day")
+lat1 <- min(closures_df$lat_dd_min)
+lat2 <- max(closures_df$lat_dd_max)
+lats <- seq(32.5, 42, 0.1)
+closures_ras <- expand.grid(date=dates, 
+                            lat_dd=lats) %>% 
+  mutate(status="closed")
+
+# Loop though  closure datafile and open cells
+i <- 1
+for(i in 1:nrow(closures_df)){
+  
+  date_do <- closures_df$date[i]
+  lat_do <- closures_df$lat_dd_max[i]
+  closures_ras <- closures_ras %>% 
+    mutate(status=ifelse(date>=date_do & lat_dd <= lat_do, "open", status))
+  
+}
+
 # Build data
 ################################################################################
 
@@ -116,8 +145,8 @@ g1 <- ggplot() +
   # Legend
   scale_fill_gradientn(name="Pre-2015\nAnnual landings (lbs)", 
                        trans="log10",
-                       breaks=c(1, 10, 100, 1000, 10000, 100000),
-                       labels=c("1", "10", "100", "1,000", "10,000", "100,000"), 
+                       breaks=c(0.1, 1, 10, 100, 1000, 10000, 100000),
+                       labels=c("0.1", "1", "10", "100", "1,000", "10,000", "100,000"), 
                        colors=RColorBrewer::brewer.pal(9, "Spectral") %>% rev()) +
   guides(fill = guide_colorbar(ticks.colour = "black", frame.colour = "black", frame.linewidth = 0.2)) +
   # Crop
@@ -135,6 +164,8 @@ g1
 # Plot monitoring
 range(data$lat_dd, na.rm=T)
 g2 <- ggplot() +
+  # Plot closure
+  geom_tile(data=closures_ras %>% filter(status=="closed"), mapping=aes(x=date, y=lat_dd), fill="red", alpha=0.5) +
   # State lines
   geom_hline(yintercept=c(42, 46.25)) +
   # Below 
@@ -164,8 +195,10 @@ g2 <- ggplot() +
   guides(fill = guide_colorbar(ticks.colour = "black", frame.colour = "black", frame.linewidth = 0.2)) +
   # Theme
   theme_bw() + base_theme +
-  theme(legend.position = c(0.85, 0.6),
+  theme(legend.position = c(0.85, 0.5),
         legend.key.size=unit(0.3, "cm"),
+        legend.spacing.y = unit(0, "pt"),
+        
         axis.title.y=element_blank(),
         axis.text.y = element_text(angle = 90, hjust = 0.5))
 g2
